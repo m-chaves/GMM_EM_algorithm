@@ -1,0 +1,303 @@
+---
+title: "EM algorithm for multivariate data"
+author: "Mariana Chaves and Franz Franco"
+output: html_document
+---
+
+# Introduction
+
+In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequated number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type.   
+
+
+# Data loading
+
+To start, we will work with 2 variables: Fixed acidity and Alcohol.  
+```{r}
+library(pgmm)
+library(mvtnorm)
+
+data(wine)
+X = as.matrix(wine[,c(2,4)])
+y = wine[,1]
+plot(X,col=y)
+```
+
+# Useful functions
+
+In this sections we define the 
+
+
+```{r}
+logsumexp = function(x) {
+  "
+  This function computes the log of the sum of the exponentials of each entry of a vector x
+  
+  Input:
+  x: a vector x
+  "
+  y = max(x)
+  y + log(sum(exp(x-y)))
+}
+
+#Initialization functions
+
+initialization.random_centroids = function(X,K){
+  "
+  This function defines the initialization of mu, sigma and prop.
+  
+  To initialize the mus, K random data points for X are sampled.
+  To initialize the sigmas, we use the variance-covariance matrix of X.
+  The props are initialized as 1/K 
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  "
+  mu = X[c(sample.int(n=dim(X)[1], size=K)),]
+  sigma = lapply(1:K, FUN = function(i) {var(X)})
+  prop = rep(1/K,K) 
+  
+  return(list(mu = mu, sigma = sigma, prop = prop))
+  
+}
+
+
+initialization.k_means = function(X,K){
+  "
+  This function defines the initialization of mu, sigma and prop.
+  
+  First k-means is applied to the data X to define K clusters. 
+  The final centroids are used as initialization for mu.
+  The variance-covariance matrix of each cluster are used as initialization for sigma. 
+  The proportion of elements in each cluster are used as initialization for prop.
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  "
+  n = dim(X)[1]
+  kmeans_result = kmeans(X, 3)
+  mu = as.matrix(kmeans_result$centers)
+  sigma = lapply(1:K, FUN = function(i){var(X[kmeans_result$cluster == i,])})
+  prop = kmeans_result$size / n
+  
+  return(list(mu = mu, sigma = sigma, prop = prop))  
+}
+
+classify = function(X,K,mu,sigma,prop){
+   "
+  This funtion classifies the data points according to the results of the EM-algorithm
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  mu: the mean of each gaussian
+  sigma: the variance-covariance matrix of each gaussian
+  prop: the proportion for each group
+  
+  Outputs:
+  a vector indicating the cluster to which the point belongs
+  "
+  probs = sapply(1:K, FUN = function(i){dnorm(X,mu[i],sigma[i])})
+  cluster = sapply(1:n, FUN = function(i){which.max(probs[i,])})
+  
+  return(cluster)
+}
+
+metrics = function(X,K,mu,sigma,prop){
+  "
+  This function computes the log-likelihood, AIC and BIC for a GMM given the data, the props, the means, and variances of the gaussians.
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  mu: the mean of each gaussian
+  sigma: the variance-covariance matrix of each gaussian
+  prop: the proportion for each group
+  
+  Outputs:
+  loglik: the final log-likelihood
+  aic: AIC of the model
+  bic: BIC of the model  
+  "
+  n = dim(X)[1] #number of observations
+  d = dim(X)[2] #number of features
+  eta = (K-1) + (K*d) + (K*d*(d-1)/2) #penalty term 
+  
+  # Compute Likelihood
+  log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
+  loglik = sum(apply(log_gamma_numerator, 1, logsumexp))
+  
+  # Compute AIC and BIC
+  aic = loglik - eta
+  bic = loglik - 0.5 * eta * log(n)
+  
+  return(list(loglik = loglik,
+              aic = aic,
+              bic = bic))
+} 
+
+
+```
+
+## The EM algorithm
+
+```{r}
+
+EM_algorithm = function(X,K,max_it=1000, initialization){
+  
+  "
+  This function computes the EM-algorithm
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  max_it: maximum of iterations (defaults to 1000)
+  initialization: 'random centroids' or 'k_means'
+  
+  Outputs:
+  mu: the mean of each gaussian
+  sigma: the variance-covariance matrix of each gaussian
+  prop: the proportion for each group
+  loglik: the final log-likelihood
+  loglik_hist: a vector with the log-likelihood in each iteration
+  aic: AIC of the model
+  bic: BIC of the model
+  "
+  
+  X = as.matrix(X)
+  n = dim(X)[1] #number of observations
+  d = dim(X)[2] #number of features
+  eta = (K-1) + (K*d) + (K*d*(d-1)/2) #penalty term 
+  gamma = matrix(NA,n,K)
+  prev_loglik = -Inf
+  loglik_hist = c() # vector to save history of log-likelihood
+    
+  # Initialization of parameters
+  if (initialization == "random_centroids"){
+    init.param = initialization.random_centroids(X,K)
+  } else if (initialization == "k_means") {
+    init.param = initialization.k_means(X,K)
+  }
+  mu = as.matrix(init.param$mu)
+  sigma = init.param$sigma
+  prop = init.param$prop
+  
+  
+  for (i in 1:max_it){
+    
+    # S step
+    log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
+    log_gamma = log_gamma_numerator - apply(log_gamma_numerator, 1, logsumexp)
+    gamma = exp(log_gamma)
+  
+    # M step
+     for (k in 1:K){
+      nk = sum(gamma[,k])
+      prop[k] = nk/n
+      mu[k,] = colSums(gamma[,k]*X)/nk
+      sigma[[k]] = t(sweep(X,2,mu[k,]))%*%diag(gamma[,k])%*%(sweep(X,2,mu[k,])) / nk 
+     }
+    
+    # Compute Likelihood, AIC and BIC
+    # results_metrics = metrics(X,K,mu,sigma,prop)
+    # loglik = results_metrics$loglik
+    # aic = results_metrics$aic
+    # bic = results_metrics$bic
+    
+    
+    log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
+    loglik = sum(apply(log_gamma_numerator, 1, logsumexp))
+    loglik_hist = append(loglik_hist,loglik)
+    
+  
+    # Compute AIC and BIC
+    bic = loglik - 0.5 * eta * log(n)
+    aic = loglik - eta
+  
+    # Stop process if likelihood didn't change
+    if (prev_loglik == loglik){break}
+    
+    prev_loglik = loglik
+  
+  }
+  
+  return(list(mu = mu,
+              sigma = sigma,
+              prop = prop,
+              loglik = loglik,
+              loglik_hist = loglik_hist,
+              aic = aic,
+              bic = bic
+              ))
+}
+
+
+EM_algorithm(X, K = 3, max_it = 10000, initialization = 'k_means')
+  
+
+```
+
+```{r}
+# Cross-validation
+
+
+crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization){
+  "
+  This function perform k-fold cross validation on the EM-algorithm. 
+  
+  Inputs:
+  X: the data
+  K: the number of clusters in the EM algorithm
+  k_fold: the number of groups for cross validation
+  max_it: maximum of iterations in the EM algorithm (defaults to 1000)
+  initialization: 'random centroids' or 'k_means'
+  
+  Outputs:
+  logliks: vector with the loglikelihoods obtained in the validation sets
+  aics: vector with the AICs obtained in the validation sets
+  bics: vector with the BICs obtained in the validation sets
+  "
+  
+  # Assigning each datapoint to one of k groups
+  vector_groups = ceiling((1:n)/(n/fold_number))
+  vector_groups = sample(vector_groups,n)
+  
+  # Variables to save results
+  logliks = c()
+  aics = c()
+  bics = c()
+  
+  for (i in 1:k_fold){
+    # training and validation split
+    train = X[vector_groups!=i,]
+    validation = X[vector_groups==i,]
+    
+    #run EM algorithm on train set
+    EM_results = EM_algorithm(X = train, K=K, max_it = max_it, initialization = initialization)
+    
+    #get AIC, BIC  and likelihood on validation set
+    metric_results = metrics(X = validation, K = K, mu = EM_results$mu, sigma = EM_results$sigma, prop = EM_results$prop)
+    logliks = append(logliks,metric_results$loglik)
+    aics = append(aics,metric_results$aic)
+    bics = append(bics,metric_results$bic)
+  }
+  
+  return(list(logliks = logliks, aics = aics, bics=bics))
+  
+}
+
+
+
+```
+
+```{r}
+library(mclust)
+mcl.model <- Mclust(X, 3)
+# Plot our results.
+plot(mcl.model, what = "classification", main = "Mclust Classification")
+
+mcl.model$parameters
+summary(mcl.model)
+```
+

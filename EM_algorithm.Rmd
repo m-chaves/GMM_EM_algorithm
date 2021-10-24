@@ -83,13 +83,47 @@ initialization.k_means = function(X,K){
   K: the number of groups
   "
   n = dim(X)[1]
-  kmeans_result = kmeans(X, 3)
+  kmeans_result = kmeans(X, K)
   mu = as.matrix(kmeans_result$centers)
   sigma = lapply(1:K, FUN = function(i){var(X[kmeans_result$cluster == i,])})
   prop = kmeans_result$size / n
   
   return(list(mu = mu, sigma = sigma, prop = prop))  
 }
+
+
+metrics = function(X,K,mu,sigma,prop){
+  "
+  This function computes the log-likelihood, AIC and BIC for a GMM given the data, the props, the means, and variances of the gaussians.
+  
+  Inputs:
+  X: the data
+  K: the number of groups
+  mu: the mean of each gaussian
+  sigma: the variance-covariance matrix of each gaussian
+  prop: the proportion for each group
+  
+  Outputs:
+  loglik: the final log-likelihood
+  aic: AIC of the model
+  bic: BIC of the model  
+  "
+  n = dim(X)[1] #number of observations
+  d = dim(X)[2] #number of features
+  eta = (K-1) + (K*d) + (K*d*(d-1)/2) #penalty term 
+  
+  # Compute Likelihood
+  log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
+  loglik = sum(apply(log_gamma_numerator, 1, logsumexp))
+  
+  # Compute AIC and BIC
+  aic = loglik - eta
+  bic = loglik - 0.5 * eta * log(n)
+  
+  return(list(loglik = loglik,
+              aic = aic,
+              bic = bic))
+} 
 
 EM_algorithm = function(X,K,max_it=1000, initialization){
   
@@ -114,8 +148,6 @@ EM_algorithm = function(X,K,max_it=1000, initialization){
   
   X = as.matrix(X)
   n = dim(X)[1] #number of observations
-  d = dim(X)[2] #number of features
-  eta = (K-1) + (K*d) + (K*d*(d-1)/2) #penalty term 
   gamma = matrix(NA,n,K)
   prev_loglik = -Inf
   loglik_hist = c() # vector to save history of log-likelihood
@@ -192,40 +224,7 @@ classify = function(X,K,mu,sigma){
   return(cluster)
 }
 
-metrics = function(X,K,mu,sigma,prop){
-  "
-  This function computes the log-likelihood, AIC and BIC for a GMM given the data, the props, the means, and variances of the gaussians.
-  
-  Inputs:
-  X: the data
-  K: the number of groups
-  mu: the mean of each gaussian
-  sigma: the variance-covariance matrix of each gaussian
-  prop: the proportion for each group
-  
-  Outputs:
-  loglik: the final log-likelihood
-  aic: AIC of the model
-  bic: BIC of the model  
-  "
-  n = dim(X)[1] #number of observations
-  d = dim(X)[2] #number of features
-  eta = (K-1) + (K*d) + (K*d*(d-1)/2) #penalty term 
-  
-  # Compute Likelihood
-  log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
-  loglik = sum(apply(log_gamma_numerator, 1, logsumexp))
-  
-  # Compute AIC and BIC
-  aic = loglik - eta
-  bic = loglik - 0.5 * eta * log(n)
-  
-  return(list(loglik = loglik,
-              aic = aic,
-              bic = bic))
-} 
-
-crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization){
+crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 32){
   "
   This function perform k-fold cross validation on the EM-algorithm. 
   
@@ -235,6 +234,7 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization){
   k_fold: the number of groups for cross validation
   max_it: maximum of iterations in the EM algorithm (defaults to 1000)
   initialization: 'random centroids' or 'k_means'
+  seed: seed for the random process that assigns the datapoints to each fold 
   
   Outputs:
   logliks: vector with the loglikelihoods obtained in the validation sets
@@ -243,7 +243,10 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization){
   "
   
   # Assigning each datapoint to one of k groups
-  vector_groups = ceiling((1:n)/(n/fold_number))
+  X = as.matrix(X)
+  n = dim(X)[1]
+  vector_groups = ceiling((1:n)/(n/k_fold))
+  set.seed(seed)
   vector_groups = sample(vector_groups,n)
   
   # Variables to save results
@@ -311,11 +314,32 @@ Let us use the EM algorithm in our bivariate dataset using the two types of init
 # Number of clusters selection
 
 ```{r}
-# pending!!!!!
 
-# use the AIC, BIC and likelihood from the cross-validation fucntion to determine the number of clusters (which I guess would be 3)
+# work in progress
+
+# Empty vectors to safe results from cross-validation 
+validation_aic = c()
+validation_bic = c()
+validation_loglik = c()
+num_clusters=c()
+k_fold = 5
+
+# Run cross-validation for different number of clusters 
+for (number_of_clusters in 2:10) {
+  # run cross-validation
+  crossval_results = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "k_means", seed = 32)
+  # save the results 
+  validation_loglik = append(validation_loglik,crossval_results$logliks)
+  validation_aic = append(validation_aic,crossval_results$aics)
+  validation_bic = append(validation_bic,crossval_results$bics)
+  num_clusters = append(num_clusters,rep(number_of_clusters,k_fold))
+} 
+
+boxplot(validation_aic~num_clusters)
+boxplot(validation_bic~num_clusters)
+boxplot(validation_loglik~num_clusters)
+
 ```
-
 
 # Towards higher dimensions
 

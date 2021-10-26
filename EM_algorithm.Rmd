@@ -238,8 +238,6 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
   
   Outputs:
   logliks: vector with the loglikelihoods obtained in the validation sets
-  aics: vector with the AICs obtained in the validation sets
-  bics: vector with the BICs obtained in the validation sets
   "
   
   # Assigning each datapoint to one of k groups
@@ -251,8 +249,6 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
   
   # Variables to save results
   logliks = c()
-  aics = c()
-  bics = c()
   
   for (i in 1:k_fold){
     # training and validation split
@@ -262,14 +258,12 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
     #run EM algorithm on train set
     EM_results = EM_algorithm(X = train, K=K, max_it = max_it, initialization = initialization)
     
-    #get AIC, BIC  and likelihood on validation set
+    #get likelihood on validation set
     metric_results = metrics(X = validation, K = K, mu = EM_results$mu, sigma = EM_results$sigma, prop = EM_results$prop)
     logliks = append(logliks,metric_results$loglik)
-    aics = append(aics,metric_results$aic)
-    bics = append(bics,metric_results$bic)
   }
   
-  return(list(logliks = logliks, aics = aics, bics=bics))
+  return(logliks)
   
 }
 
@@ -318,25 +312,19 @@ Let us use the EM algorithm in our bivariate dataset using the two types of init
 # work in progress
 
 # Empty vectors to safe results from cross-validation 
-validation_aic = c()
-validation_bic = c()
 validation_loglik = c()
 num_clusters=c()
-k_fold = 5
+k_fold = 10
 
 # Run cross-validation for different number of clusters 
 for (number_of_clusters in 2:10) {
   # run cross-validation
-  crossval_results = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "k_means", seed = 32)
+  logliks = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "k_means", seed = 32)
   # save the results 
-  validation_loglik = append(validation_loglik,crossval_results$logliks)
-  validation_aic = append(validation_aic,crossval_results$aics)
-  validation_bic = append(validation_bic,crossval_results$bics)
+  validation_loglik = append(validation_loglik,logliks)
   num_clusters = append(num_clusters,rep(number_of_clusters,k_fold))
 } 
 
-boxplot(validation_aic~num_clusters)
-boxplot(validation_bic~num_clusters)
 boxplot(validation_loglik~num_clusters)
 
 ```

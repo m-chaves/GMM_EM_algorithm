@@ -125,16 +125,22 @@ metrics = function(X,K,mu,sigma,prop){
               bic = bic))
 } 
 
-EM_algorithm = function(X,K,max_it=1000, initialization){
+EM_algorithm = function(X,K,max_it=1000, initialization, number_of_initialization = 10){
   
   "
   This function computes the EM-algorithm
+  
+  Note that the EM-algorith is sensible to the initialization of the parameters. 
+  That is, different initializations can let to different local maxima of the log-likelihood.
+  'number of initialization' defines the number of times to run the EM-algorithm with different initializations.
+  The function outputs the results related to the best maxima found. 
   
   Inputs:
   X: the data
   K: the number of groups
   max_it: maximum of iterations (defaults to 1000)
   initialization: 'random centroids' or 'k_means'
+  number_of_initialization: 
   
   Outputs:
   mu: the mean of each gaussian
@@ -148,60 +154,77 @@ EM_algorithm = function(X,K,max_it=1000, initialization){
   
   X = as.matrix(X)
   n = dim(X)[1] #number of observations
-  gamma = matrix(NA,n,K)
-  prev_loglik = -Inf
-  loglik_hist = c() # vector to save history of log-likelihood
+  
+  best_maximum = -Inf
+  for (j in 1:number_of_initialization){
     
-  # Initialization of parameters
-  if (initialization == "random_centroids"){
-    init.param = initialization.random_centroids(X,K)
-  } else if (initialization == "k_means") {
-    init.param = initialization.k_means(X,K)
+    gamma = matrix(NA,n,K)
+    prev_loglik = -Inf
+    loglik_hist = c() # vector to save history of log-likelihood
+      
+    # Initialization of parameters
+    if (initialization == "random_centroids"){
+      init.param = initialization.random_centroids(X,K)
+    } else if (initialization == "k_means") {
+      init.param = initialization.k_means(X,K)
+    }
+    mu = as.matrix(init.param$mu)
+    sigma = init.param$sigma
+    prop = init.param$prop
+    
+    
+    for (i in 1:max_it){
+      
+      # S step
+      log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
+      log_gamma = log_gamma_numerator - apply(log_gamma_numerator, 1, logsumexp)
+      gamma = exp(log_gamma)
+    
+      # M step
+       for (k in 1:K){
+        nk = sum(gamma[,k])
+        prop[k] = nk/n
+        mu[k,] = colSums(gamma[,k]*X)/nk
+        sigma[[k]] = t(sweep(X,2,mu[k,]))%*%diag(gamma[,k])%*%(sweep(X,2,mu[k,])) / nk 
+       }
+      
+      # Compute Likelihood, AIC and BIC
+      results_metrics = metrics(X,K,mu,sigma,prop)
+      loglik = results_metrics$loglik
+      aic = results_metrics$aic
+      bic = results_metrics$bic
+      
+      loglik_hist = append(loglik_hist,loglik)
+      
+    
+      # Stop process if likelihood didn't change
+      if (prev_loglik == loglik){break}
+      
+      prev_loglik = loglik
+    
+    }
+    
+    results = list(mu = mu,
+                sigma = sigma,
+                prop = prop,
+                loglik = loglik,
+                loglik_hist = loglik_hist,
+                aic = aic,
+                bic = bic
+                )
+  
+  # If this initialization found a better maxima, save the results and new best maximum. 
+  if (best_maximum < results$loglik)
+    {
+    best_maximum = results$loglik
+    best_results = results
+    }
+  
   }
-  mu = as.matrix(init.param$mu)
-  sigma = init.param$sigma
-  prop = init.param$prop
+  
+  return(best_results)
   
   
-  for (i in 1:max_it){
-    
-    # S step
-    log_gamma_numerator = sapply(1:K, FUN = function(k){log(prop[k]) + dmvnorm(X, mu[k,], sigma[[k]], log = TRUE)})
-    log_gamma = log_gamma_numerator - apply(log_gamma_numerator, 1, logsumexp)
-    gamma = exp(log_gamma)
-  
-    # M step
-     for (k in 1:K){
-      nk = sum(gamma[,k])
-      prop[k] = nk/n
-      mu[k,] = colSums(gamma[,k]*X)/nk
-      sigma[[k]] = t(sweep(X,2,mu[k,]))%*%diag(gamma[,k])%*%(sweep(X,2,mu[k,])) / nk 
-     }
-    
-    # Compute Likelihood, AIC and BIC
-    results_metrics = metrics(X,K,mu,sigma,prop)
-    loglik = results_metrics$loglik
-    aic = results_metrics$aic
-    bic = results_metrics$bic
-    
-    loglik_hist = append(loglik_hist,loglik)
-    
-  
-    # Stop process if likelihood didn't change
-    if (prev_loglik == loglik){break}
-    
-    prev_loglik = loglik
-  
-  }
-  
-  return(list(mu = mu,
-              sigma = sigma,
-              prop = prop,
-              loglik = loglik,
-              loglik_hist = loglik_hist,
-              aic = aic,
-              bic = bic
-              ))
 }
 
 classify = function(X,K,mu,sigma){
@@ -314,10 +337,11 @@ Let us use the EM algorithm in our bivariate dataset using the two types of init
 # Empty vectors to safe results from cross-validation 
 validation_loglik = c()
 num_clusters=c()
-k_fold = 10
+k_fold = 5
 
 # Run cross-validation for different number of clusters 
-for (number_of_clusters in 2:10) {
+for (number_of_clusters in 2:7) {
+  print(number_of_clusters)
   # run cross-validation
   logliks = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "k_means", seed = 32)
   # save the results 

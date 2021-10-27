@@ -387,19 +387,46 @@ for (number_of_clusters in 2:7) {
 ```
 
 ```{r}
+
+#WIP
+
+# I need to implement nice graphs 
+
 boxplot(validation_loglik~num_clusters)
+points(tapply(validation_loglik, num_clusters, mean), col="blue", pch=19)
+legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
 plot(aic_vector~c(2:7))
 plot(bic_vector~c(2:7))
+
 ```
+The log-likelihoods derived from cross-validation indicate that on average using 3 clusters produces the higher log-likelihood.
+The AIC indicates that 7 clusters would be the best option, while the BIC suggests using 3 clusters. Let us remember that the AIC does not take into consideration the sample size ($n=178$ in our case), so it could be giving advantage to models with too many clusters without considering that the sample size is not that big. 
+
+Let us extract 7 clusters and observe the results.
+
+```{r}
+EM_7clusters = EM_algorithm(X, K=7, initialization = "random_centroids")
+clusters = classify(X, K=7, mu = EM_7clusters$mu, sigma = EM_7clusters$sigma, prop = EM_7clusters$prop)
+table(clusters)
+
+```
+We see that one of the cluster has as little as only 4 observations, where probably, the model is over-fitting. 
+
+Therefore, in this scenario we choose extracting 3 clusters as the best solution, which coincides with the ground truth that we knew. That is, that there are indeed 3 types of wine in the dataset. 
 
 # Towards higher dimensions
 
-In this section we apply the EM-algorithm using more variables of the dataset and verify if the number of clusters stays the same. 
+In this section we apply the EM-algorithm using more variables of the dataset and verify if the number of clusters stays the same.
+
+We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood. 
 
 ```{r}
 # pending!!!
 
 # do a loop to apply cross-validation and select the number of clusters for 3, 4, 5 ,6 ....10 variables, and then for the whole dataset maybe? (28 variables)
+
+
+
 ```
 
 

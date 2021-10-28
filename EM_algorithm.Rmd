@@ -17,6 +17,7 @@ library(mclust)
 library(dplyr)
 library(reshape)
 library(mvtnorm)
+library(dplyr)
 ```
 
 
@@ -402,6 +403,33 @@ return(p1)
 
 }
 
+plot_AIC_BIC_by_cluster = function(aic_vector,bic_vector,min_clusters,max_clusters){
+  '
+  This function plots the AIC and BIC by number of clusters. 
+  
+  Inputs:
+  aic_vector: a vector of AICs.
+  bic_vector: a vector of BICs
+  min_clusters: the minimum number of clusters
+  max_clusters: maximum number of clusters
+  
+  Output:
+  p: a plot of AIC and BIC by number of clusters'
+  
+  
+  # Define appropiate dataset
+  df = data.frame(c(aic_vector,bic_vector), rep(min_clusters:max_clusters, 2), rep(c("AIC","BIC"),each = length(min_clusters:max_clusters)))
+  names(df) = c('Information criteria', 'Number of clusters','Type')
+  
+  #plot
+  p = df %>% 
+    ggplot(aes(x=`Number of clusters`, y=`Information criteria`, shape=Type, color=Type)) + 
+    geom_point() + 
+    theme_bw()
+  
+  return(p)
+}
+
 ```
 
 # Data loading
@@ -415,8 +443,7 @@ clPairs(X, y)
 
 ```
 
-
-# Add some description of this graph (the one with ellipses) 
+WIP: Add some description of this graph (the one with ellipses) 
 
 ```{r cluster data, fig.height=4}
 
@@ -607,12 +634,16 @@ validation_loglik = c()
 num_clusters=c()
 k_fold = 5
 
+# Maximum and minimum number of clusters to iterate over
+min_clusters = 2
+max_clusters = 7 
+
 # Empty vector to safe the results from AIC and BIC
 aic_vector = c()
 bic_vector = c()
 
 # EM-algorithm for different number of clusters
-for (number_of_clusters in 2:7) {
+for (number_of_clusters in min_clusters:max_clusters) {
 
   # run EM-algorithm
   results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
@@ -638,6 +669,9 @@ points(tapply(validation_loglik, num_clusters, mean), col="blue", pch=19)
 legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
 plot(aic_vector~c(2:7))
 plot(bic_vector~c(2:7))
+
+
+
 
 ```
 The log-likelihoods derived from cross-validation indicate that on average using 3 clusters produces the higher log-likelihood.
@@ -716,6 +750,38 @@ for (i in 4:10){
 
 ```
 
+
+```{r}
+
+#WIP: make nice graphs
+
+for (i in 1:length(validation_loglik_list)){
+  boxplot(validation_loglik_list[[i]]~num_clusters)
+  points(tapply(validation_loglik_list[[i]], num_clusters, mean), col="blue", pch=19)
+  legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
+  plot(aic_vector_list[[i]]~c(2:7))
+  plot(bic_vector_list[[i]]~c(2:7))
+}
+
+
+```
+
+Let us observe the results using the first 9 variables in the dataset and extracting the true number of clusters ($K=3$). 
+
+```{r}
+
+#WIP: make nice graphs
+
+X = as.matrix(wine[,2:10])
+results = EM_algorithm(X = X, K = 3, initialization = "random_centroids")
+clusters = classify(X = as.matrix(wine[,2:i]), K = 3, mu = results$mu, sigma = results$sigma, prop = results$prop)
+
+my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
+pairs(X, pch = 19,  cex = 0.5,
+      col = my_cols[clusters],
+      lower.panel=NULL)
+
+```
 
 
 

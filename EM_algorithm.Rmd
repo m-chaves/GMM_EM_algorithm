@@ -8,25 +8,16 @@ output: html_document
 
 In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequated number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type.   
 
-
-# Data loading
-
-To start, we will work only with 2 variables: Fixed acidity and Alcohol.  
-```{r data laoding}
+```{r libraries}
 library(pgmm)
-library(mvtnorm)
 library(ellipse)
 library(ggplot2)
 library(ggpubr)
 library(mclust)
-
-
-data(wine)
-X = as.matrix(wine[,c(2,4)])
-y = wine[,1]
-clPairs(X, y)
-
+library(mvtnorm)
 ```
+
+
 
 # Useful functions
 
@@ -34,7 +25,7 @@ In this section we define the functions that will help us in our analysis.
 
 * `logsumexp` computes the log of the sum of the exponential of each entry of a vector $x$. This is useful for the computation of the log-likelihood and the responsibilities $\gamma(z_{nk})$.
 * We create two functions, `initialization.random_centroids` and `initialization.k_means`, for the initialization of the parameters $\mu_k$, $\sigma_k$ and $\pi_k$. Given $K$, the number of clusters, `initialization.random_centroids` randomly samples $K$ points of the data and sets them as the initialization of $\mu_1, \ldots , \mu_k$. The variance-covariance matrix of the data $X$ serves as initialization for each $sigma_k$. Each $\pi_k$ is set to $1/K$. The second function, `initialization.k_means`, runs k-means on the data $X$. Then it uses the final centroids produced by k-means to initialize each $\mu_k$. It computes the variance-covariance matrices of the clusters found by k-means to initialize each $\sigma_k$. Finally, each $pi_k$ is initiliazed according to the number of elements in the clusters.
-* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen.       
+* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen.     
 * `classify` takes the resulting means ($\mu_1, \ldots, \mu_K$) and variances ($\sigma_1, \ldots, \sigma_K$) of the EM algorithm and classifies the points in $K$ clusters.
 * `metrics` computes the likelihood, AIC and BIC. 
 * `crossvalidation.EM` performs cross-validation on the EM-algorithm.  
@@ -299,7 +290,8 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
   
 }
 
-####################plot functions###########################
+# Plotting functions
+
 plot_ellipses = function(X,K,mu,sigma,groups_pred){
    "
   This funtion plot the ellipses of the GMM clustering defined by mu and sigma
@@ -341,7 +333,7 @@ return(p)
 
 plot_ellipses_CI = function(X,K,groups){
    "
-    This funtion plot the ellipses of defined by the data itself with a 95% CI
+    This funtion plot the ellipses defined by the data itself with a 95% CI
   
   Inputs:
   X: data
@@ -377,12 +369,31 @@ return(p)
 
 ```
 
+# Data loading
+
+To start, we will work only with 2 variables: Fixed acidity and Alcohol.  
+```{r data loading}
+data(wine)
+X = as.matrix(wine[,c(2,4)])
+y = wine[,1]
+clPairs(X, y)
+
+```
+
+
+# Add some description of this graph (the one with ellipses) 
+
 ```{r cluster data, fig.height=4}
+
+#WIP: name axis according to the variables, add groups names (the wine names) 
+
 data(wine)
 K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
 plot_ellipses_CI(X,K,y)
+
+
 ```
 
 
@@ -390,10 +401,11 @@ plot_ellipses_CI(X,K,y)
 
 Let us use the EM algorithm in our bivariate dataset using the two types of initialization. 
 
-```{r ellipses cluster 2var, fig.height=18, fig.width=12}
-# pending!!!!!!!!!!!!
+WIP: Explain what is the adjustedRandIndex and classError, provide the interpretations.
 
-# visualize the results of the two types (plot with the clusters and the final means)
+```{r ellipses cluster 2var, fig.height=18, fig.width=12}
+
+# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex. 
 
 n = dim(X)[1]
 
@@ -502,9 +514,7 @@ for (number_of_clusters in 2:7) {
 
 ```{r}
 
-#WIP
-
-# I need to implement nice graphs 
+#WIP: I need to implement nice graphs 
 
 boxplot(validation_loglik~num_clusters)
 points(tapply(validation_loglik, num_clusters, mean), col="blue", pch=19)

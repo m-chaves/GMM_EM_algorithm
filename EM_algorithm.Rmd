@@ -418,12 +418,58 @@ Therefore, in this scenario we choose extracting 3 clusters as the best solution
 
 In this section we apply the EM-algorithm using more variables of the dataset and verify if the number of clusters stays the same.
 
-We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood. 
+We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood.
 
 ```{r}
-# pending!!!
 
-# do a loop to apply cross-validation and select the number of clusters for 3, 4, 5 ,6 ....10 variables, and then for the whole dataset maybe? (28 variables)
+#Empty lists to save the results
+validation_loglik_list = list()
+aic_vector_list = list()
+bic_vector_list = list()
+counter = 1
+
+# Run the process each time adding an extra variable
+# Starting from the first 3 variables and onward 
+for (i in 4:10){
+  print(i)
+ 
+  # Define the data
+  X = as.matrix(wine[,2:i])
+  
+  # Empty vectors to safe results from cross-validation 
+  validation_loglik = c()
+  num_clusters=c()
+  k_fold = 5
+  
+  # Empty vector to safe the results from AIC and BIC
+  aic_vector = c()
+  bic_vector = c()
+  
+  # EM-algorithm for different number of clusters
+  for (number_of_clusters in 2:7) {
+    print(number_of_clusters)
+    # run EM-algorithm
+    results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
+    # save AIC and BIC
+    aic_vector = append(aic_vector,results$aic)
+    bic_vector = append(bic_vector,results$bic)
+     
+    # run cross-validation
+    logliks = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "random_centroids", seed = 32)
+    # save likelihood results from cross validation  
+    validation_loglik = append(validation_loglik,logliks)
+    num_clusters = append(num_clusters,rep(number_of_clusters,k_fold))
+  }
+
+  validation_loglik_list[[counter]] = validation_loglik
+  aic_vector_list[[counter]] = aic_vector
+  bic_vector_list[[counter]] = bic_vector
+  
+  counter = counter + 1
+  
+ 
+}
+
 
 
 

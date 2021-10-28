@@ -8,26 +8,18 @@ output: html_document
 
 In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequated number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type.   
 
-
-# Data loading
-
-To start, we will work only with 2 variables: Fixed acidity and Alcohol.  
-```{r data laoding}
+```{r libraries}
 library(pgmm)
-library(mvtnorm)
 library(ellipse)
 library(ggplot2)
 library(ggpubr)
 library(mclust)
 library(dplyr)
 library(reshape)
-
-data(wine)
-X = as.matrix(wine[,c(2,4)])
-y = wine[,1]
-clPairs(X, y)
-
+library(mvtnorm)
+library(dplyr)
 ```
+
 
 # Useful functions
 
@@ -35,7 +27,7 @@ In this section we define the functions that will help us in our analysis.
 
 * `logsumexp` computes the log of the sum of the exponential of each entry of a vector $x$. This is useful for the computation of the log-likelihood and the responsibilities $\gamma(z_{nk})$.
 * We create two functions, `initialization.random_centroids` and `initialization.k_means`, for the initialization of the parameters $\mu_k$, $\sigma_k$ and $\pi_k$. Given $K$, the number of clusters, `initialization.random_centroids` randomly samples $K$ points of the data and sets them as the initialization of $\mu_1, \ldots , \mu_k$. The variance-covariance matrix of the data $X$ serves as initialization for each $sigma_k$. Each $\pi_k$ is set to $1/K$. The second function, `initialization.k_means`, runs k-means on the data $X$. Then it uses the final centroids produced by k-means to initialize each $\mu_k$. It computes the variance-covariance matrices of the clusters found by k-means to initialize each $\sigma_k$. Finally, each $pi_k$ is initiliazed according to the number of elements in the clusters.
-* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen.       
+* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen.     
 * `classify` takes the resulting means ($\mu_1, \ldots, \mu_K$) and variances ($\sigma_1, \ldots, \sigma_K$) of the EM algorithm and classifies the points in $K$ clusters.
 * `metrics` computes the likelihood, AIC and BIC. 
 * `crossvalidation.EM` performs cross-validation on the EM-algorithm.  
@@ -303,7 +295,8 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
   
 }
 
-####################plot functions###########################
+# Plotting functions
+
 plot_ellipses = function(X,K,mu,sigma,groups_pred){
    "
   This funtion plot the ellipses of the GMM clustering defined by mu and sigma
@@ -345,7 +338,7 @@ return(p)
 
 plot_ellipses_CI = function(X,K,groups){
    "
-    This funtion plot the ellipses of defined by the data itself with a 95% CI
+    This funtion plot the ellipses defined by the data itself with a 95% CI
   
   Inputs:
   X: data
@@ -410,14 +403,59 @@ return(p1)
 
 }
 
+plot_AIC_BIC_by_cluster = function(aic_vector,bic_vector,min_clusters,max_clusters){
+  '
+  This function plots the AIC and BIC by number of clusters. 
+  
+  Inputs:
+  aic_vector: a vector of AICs.
+  bic_vector: a vector of BICs
+  min_clusters: the minimum number of clusters
+  max_clusters: maximum number of clusters
+  
+  Output:
+  p: a plot of AIC and BIC by number of clusters'
+  
+  
+  # Define appropiate dataset
+  df = data.frame(c(aic_vector,bic_vector), rep(min_clusters:max_clusters, 2), rep(c("AIC","BIC"),each = length(min_clusters:max_clusters)))
+  names(df) = c('Information criteria', 'Number of clusters','Type')
+  
+  #plot
+  p = df %>% 
+    ggplot(aes(x=`Number of clusters`, y=`Information criteria`, shape=Type, color=Type)) + 
+    geom_point() + 
+    theme_bw()
+  
+  return(p)
+}
+
 ```
 
+# Data loading
+
+To start, we will work only with 2 variables: Fixed acidity and Alcohol.  
+```{r data loading}
+data(wine)
+X = as.matrix(wine[,c(2,4)])
+y = wine[,1]
+clPairs(X, y)
+
+```
+
+WIP: Add some description of this graph (the one with ellipses) 
+
 ```{r cluster data, fig.height=4}
+
+#WIP: name axis according to the variables, add groups names (the wine names) 
+
 data(wine)
 K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
 plot_ellipses_CI(X,K,y)
+
+
 ```
 
 
@@ -425,10 +463,11 @@ plot_ellipses_CI(X,K,y)
 
 Let us use the EM algorithm in our bivariate dataset using the two types of initialization. 
 
-```{r ellipses cluster 2var, fig.height=18, fig.width=12}
-# pending!!!!!!!!!!!!
+WIP: Explain what is the adjustedRandIndex and classError, provide the interpretations.
 
-# visualize the results of the two types (plot with the clusters and the final means)
+```{r ellipses cluster 2var, fig.height=18, fig.width=12}
+
+# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex. 
 
 n = dim(X)[1]
 
@@ -593,12 +632,16 @@ validation_loglik = c()
 num_clusters=c()
 k_fold = 5
 
+# Maximum and minimum number of clusters to iterate over
+min_clusters = 2
+max_clusters = 7 
+
 # Empty vector to safe the results from AIC and BIC
 aic_vector = c()
 bic_vector = c()
 
 # EM-algorithm for different number of clusters
-for (number_of_clusters in 2:7) {
+for (number_of_clusters in min_clusters:max_clusters) {
 
   # run EM-algorithm
   results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
@@ -617,15 +660,16 @@ for (number_of_clusters in 2:7) {
 
 ```{r}
 
-#WIP
-
-# I need to implement nice graphs 
+#WIP: I need to implement nice graphs 
 
 boxplot(validation_loglik~num_clusters)
 points(tapply(validation_loglik, num_clusters, mean), col="blue", pch=19)
 legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
 plot(aic_vector~c(2:7))
 plot(bic_vector~c(2:7))
+
+
+
 
 ```
 The log-likelihoods derived from cross-validation indicate that on average using 3 clusters produces the higher log-likelihood.
@@ -647,17 +691,95 @@ Therefore, in this scenario we choose extracting 3 clusters as the best solution
 
 In this section we apply the EM-algorithm using more variables of the dataset and verify if the number of clusters stays the same.
 
-We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood. 
+We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood.
 
 ```{r}
-# pending!!!
 
-# do a loop to apply cross-validation and select the number of clusters for 3, 4, 5 ,6 ....10 variables, and then for the whole dataset maybe? (28 variables)
+#Empty lists to save the results
+validation_loglik_list = list()
+aic_vector_list = list()
+bic_vector_list = list()
+counter = 1
+
+# Run the process each time adding an extra variable
+# Starting from the first 3 variables and onward 
+for (i in 4:10){
+  print(i)
+ 
+  # Define the data
+  X = as.matrix(wine[,2:i])
+  
+  # Empty vectors to safe results from cross-validation 
+  validation_loglik = c()
+  num_clusters=c()
+  k_fold = 5
+  
+  # Empty vector to safe the results from AIC and BIC
+  aic_vector = c()
+  bic_vector = c()
+  
+  # EM-algorithm for different number of clusters
+  for (number_of_clusters in 2:7) {
+    print(number_of_clusters)
+    # run EM-algorithm
+    results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
+    # save AIC and BIC
+    aic_vector = append(aic_vector,results$aic)
+    bic_vector = append(bic_vector,results$bic)
+     
+    # run cross-validation
+    logliks = crossvalidation.EM(X, K = number_of_clusters, k_fold = k_fold, initialization = "random_centroids", seed = 32)
+    # save likelihood results from cross validation  
+    validation_loglik = append(validation_loglik,logliks)
+    num_clusters = append(num_clusters,rep(number_of_clusters,k_fold))
+  }
+
+  validation_loglik_list[[counter]] = validation_loglik
+  aic_vector_list[[counter]] = aic_vector
+  bic_vector_list[[counter]] = bic_vector
+  
+  counter = counter + 1
+  
+ 
+}
+
 
 
 
 ```
 
+
+```{r}
+
+#WIP: make nice graphs
+
+for (i in 1:length(validation_loglik_list)){
+  boxplot(validation_loglik_list[[i]]~num_clusters)
+  points(tapply(validation_loglik_list[[i]], num_clusters, mean), col="blue", pch=19)
+  legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
+  plot(aic_vector_list[[i]]~c(2:7))
+  plot(bic_vector_list[[i]]~c(2:7))
+}
+
+
+```
+
+Let us observe the results using the first 9 variables in the dataset and extracting the true number of clusters ($K=3$). 
+
+```{r}
+
+#WIP: make nice graphs
+
+X = as.matrix(wine[,2:10])
+results = EM_algorithm(X = X, K = 3, initialization = "random_centroids")
+clusters = classify(X = as.matrix(wine[,2:i]), K = 3, mu = results$mu, sigma = results$sigma, prop = results$prop)
+
+my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
+pairs(X, pch = 19,  cex = 0.5,
+      col = my_cols[clusters],
+      lower.panel=NULL)
+
+```
 
 
 

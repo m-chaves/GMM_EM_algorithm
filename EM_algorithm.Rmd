@@ -398,6 +398,17 @@ return(plots_mu)
     
 }
 
+plot_hist_loglik = function(loglik_hist){
+
+data_loglik = as.data.frame(loglik_hist)
+data_loglik$index=c(1:nrow(data_loglik))
+colnames(data_loglik) = c("loglik_hist", "index")
+
+p1 <- ggplot(data_loglik, aes(index,loglik_hist)) + geom_point(shape=4) + geom_path()+ theme_bw()
+
+return(p1)
+
+}
 
 ```
 
@@ -465,10 +476,6 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,lege
 
 ```
 
-```{r}
-# results_EM$loglik_hist
-# loglik_list[[plt_n]]
-```
 
 ```{r mu plots, fig.height=18, fig.width=12}
 
@@ -488,6 +495,53 @@ K<-K+1
 }
 
 ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
+```
+
+```{r loglik plots, fig.height=18, fig.width=12}
+plots_list = list()
+for (plt_n in c(1:length(loglik_list))){
+  loglik_hist = loglik_list[[plt_n]]
+  p1 = plot_hist_loglik(loglik_hist)
+  plots_list[[plt_n]] = p1
+}
+
+ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
+
+# plot_list_loglik = function(loglik_list){
+# 
+# 
+# data_loglik <- matrix(ncol=length(loglik_list), nrow=1000)
+# 
+# plots_list = c()
+# for (plt_n in c(1:length(loglik_list))){
+# 
+# data_loglik[,1] <- loglik_list[[1]]
+# data_loglik[,1] <- loglik_list[[1]]
+# loglik_list[[1]]
+# plots_list = append(plots_list,plot_hist_mu(data_mu, K))
+# 
+# if((plt_n %% 2) == 0) {
+# K<-K+1
+# }
+# 
+# }
+# 
+# ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
+#   
+#   
+# data_loglik = as.data.frame(loglik_hist)
+# colnames(data_loglik) = c("loglik_hist", "index")
+# 
+# data_loglik$index=c(1:nrow(data_loglik))
+# 
+# p1 <- ggplot(data_loglik, aes(index,loglik_hist)) + geom_point(shape=4) + geom_path()+ theme_bw()
+# 
+# return(p1)
+# 
+# }
+
+
+
 ```
 
 ```{r}

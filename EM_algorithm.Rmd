@@ -12,14 +12,20 @@ In this work, we implement the EM-algorithm for GMM. It is applied to multivaria
 # Data loading
 
 To start, we will work only with 2 variables: Fixed acidity and Alcohol.  
-```{r}
+```{r data laoding}
 library(pgmm)
 library(mvtnorm)
+library(ellipse)
+library(ggplot2)
+library(ggpubr)
+library(mclust)
+
 
 data(wine)
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
-plot(X,col=y)
+clPairs(X, y)
+
 ```
 
 # Useful functions
@@ -34,7 +40,7 @@ In this section we define the functions that will help us in our analysis.
 * `crossvalidation.EM` performs cross-validation on the EM-algorithm.  
 
 
-```{r}
+```{r functions}
 logsumexp = function(x) {
   "
   This function computes the log of the sum of the exponentials of each entry of a vector x
@@ -293,7 +299,90 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
   
 }
 
+####################plot functions###########################
+plot_ellipses = function(X,K,mu,sigma,groups_pred){
+   "
+  This funtion plot the ellipses of the GMM clustering defined by mu and sigma
+  
+  Inputs:
+  X: data
+  K: the number of clusters in the EM algorithm
+  mu: mean computed by the EM algorithm
+  sigma: cov matrix computed by the EM algorithm
+  groups_pred: vector predicted by the EM with the cluster group for each data point
+  
+  Outputs:
+  p: plot of the data with the GMM clusters(ellipses)
+  "
+df <- data.frame(X, groups_pred)
+colnames(df) <- c("x1", "x2", "group")
+for(g in c(1:K)){
+  df$group[df$group==g] <- LETTERS[g]
+}
 
+#calculating ellipses
+
+clusters <- sort(unique(df$group))
+df_ell <- data.frame()
+for(g in c(1:K)){
+M=sigma[[g]]
+centre=mu[g,]
+
+df_ell <- rbind(df_ell, cbind(as.data.frame(ellipse(M, centre=centre)),group=clusters[g]))
+
+}
+colnames(df_ell) <- c("x1", "x2", "group")
+#drawing
+mu_df = data.frame(mu)
+p <- ggplot(data=df, aes(x=x1, y=x2,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x1, y=x2,colour=group), size=1, linetype=2) +geom_point(data=mu_df,aes(x=mu_df[,1],y=mu_df[,2]), shape=4, color='black',size=3)
+  
+return(p)
+}
+
+plot_ellipses_CI = function(X,K,groups){
+   "
+    This funtion plot the ellipses of defined by the data itself with a 95% CI
+  
+  Inputs:
+  X: data
+  K: the number of clusters
+  groups: vector with the cluster group for each data point
+  
+  Outputs:
+  p: plot of the data with its cluster
+  "
+df <- data.frame(X, groups)
+colnames(df) <- c("x", "y", "group")
+for(g in c(1:K)){
+  df$group[df$group==g] <- LETTERS[g]
+  
+}
+
+#calculating ellipses
+clusters <- sort(unique(df$group))
+df_ell <- data.frame()
+for(g in c(1:K)){
+df_ell <- rbind(df_ell, cbind(as.data.frame(with(df[df$group==clusters[g],], ellipse(cor(x, y), 
+                                         scale=c(sd(x),sd(y)), 
+                                         centre=c(mean(x),mean(y))))),group=clusters[g]))
+
+}
+
+#drawing
+p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2)
+  
+return(p)
+}
+
+
+```
+
+```{r cluster data, fig.height=4}
+data(wine)
+K = 3
+X = as.matrix(wine[,c(2,4)])
+y = wine[,1]
+plot_ellipses_CI(X,K,y)
 ```
 
 
@@ -301,43 +390,68 @@ crossvalidation.EM = function(X, K, k_fold, max_it=1000, initialization, seed = 
 
 Let us use the EM algorithm in our bivariate dataset using the two types of initialization. 
 
-```{r}
+```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 # pending!!!!!!!!!!!!
 
 # visualize the results of the two types (plot with the clusters and the final means)
 
+n = dim(X)[1]
+
+plots_list=list()
+c_error_vec = c()
+adj_rndI_vec = c()
+plt_n = 1
+for(K in c(2:5)){
+  for(init_EM in c("random_centroids", "k_means")){
+    
+results_EM = EM_algorithm(X, K, initialization = init_EM)
+mu_em = results_EM$mu
+sigma_em = results_EM$sigma
+groups_pred = classify(X,K,mu_em,sigma_em, prop = results_EM$prop)
+
+#building the list of plots
+p1 <- plot_ellipses(X,K,mu_em,sigma_em,groups_pred)
+plots_list[[plt_n]]=p1
+plt_n <- plt_n + 1
+
+#evaluating the clustering
+adj_rndI_vec = append(adj_rndI_vec, adjustedRandIndex(groups_pred, y))
+c_error_vec = append(c_error_vec, classError(groups_pred, y))
+}
+}
+
+labels_error <- paste("error=", as.character(round(adj_rndI_vec,4)), sep="")
+
+ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none")
+
+```
+
+
+```{r}
+
 # are the means and sigmas the same?
+
+
 
 # is the classification the same?
 
+
 # is the AIC, BIC and loglik the same?
 
+
 # compare the number of iterations to converge (use length(loglik_hist))
+
 
 # (if the results are the same continue with only one of the two)
 
 ```
 
-```{r}
-# Example using the classify function 
-
-# Delete this later!!!!!! (Replace for the nice plots Franz is working on)
-
-results = EM_algorithm(X, K=3, initialization = "random_centroids")
-
-results_clusters = classify(X, K, mu = results$mu, sigma = results$sigma, prop = results$prop)
-
-plot(X, col=results_clusters)
-points(results$mu,col="blue", pch=19)
-
-
-```
-
-
 # EM algorithm vs k-means
 
 ```{r}
 # pending!!!!!!!!!!!
+
+
 
 # comparison the clusters of each technique using classError and adjustedRandIndex from the Mclust package
 

@@ -14,10 +14,10 @@ library(ellipse)
 library(ggplot2)
 library(ggpubr)
 library(mclust)
-library(mvtnorm)
 library(dplyr)
+library(reshape)
+library(mvtnorm)
 ```
-
 
 
 # Useful functions
@@ -26,11 +26,10 @@ In this section we define the functions that will help us in our analysis.
 
 * `logsumexp` computes the log of the sum of the exponential of each entry of a vector $x$. This is useful for the computation of the log-likelihood and the responsibilities $\gamma(z_{nk})$.
 * We create two functions, `initialization.random_centroids` and `initialization.k_means`, for the initialization of the parameters $\mu_k$, $\sigma_k$ and $\pi_k$. Given $K$, the number of clusters, `initialization.random_centroids` randomly samples $K$ points of the data and sets them as the initialization of $\mu_1, \ldots , \mu_k$. The variance-covariance matrix of the data $X$ serves as initialization for each $sigma_k$. Each $\pi_k$ is set to $1/K$. The second function, `initialization.k_means`, runs k-means on the data $X$. Then it uses the final centroids produced by k-means to initialize each $\mu_k$. It computes the variance-covariance matrices of the clusters found by k-means to initialize each $\sigma_k$. Finally, each $pi_k$ is initiliazed according to the number of elements in the clusters.
-* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen. Also, knowing that the EM-algorithm is sensible to the initialization of the parameters. That is, different initializations can lead to different local maxima of the log-likelihood, the parameter 'number of initialization' defines the number of times to run the EM-algorithm with different initializations. The function outputs the results related to the best maximum found. 
+* Given a dataset $X$ and a number of desired clusters $K$, `EM_algorithm` computes the EM algorithm. One of the previously described initializations must be chosen.     
 * `classify` takes the resulting means ($\mu_1, \ldots, \mu_K$) and variances ($\sigma_1, \ldots, \sigma_K$) of the EM algorithm and classifies the points in $K$ clusters.
 * `metrics` computes the likelihood, AIC and BIC. 
-* `crossvalidation.EM` performs k-fold cross-validation on the EM-algorithm.
-* 
+* `crossvalidation.EM` performs cross-validation on the EM-algorithm.  
 
 
 ```{r functions}
@@ -153,6 +152,7 @@ EM_algorithm = function(X,K,max_it=1000, initialization, number_of_initializatio
   
   X = as.matrix(X)
   n = dim(X)[1] #number of observations
+  mu_hist <- matrix(ncol=K*2, nrow=max_it)
   
   best_maximum = -Inf
   for (j in 1:number_of_initialization){
@@ -187,6 +187,7 @@ EM_algorithm = function(X,K,max_it=1000, initialization, number_of_initializatio
         sigma[[k]] = t(sweep(X,2,mu[k,]))%*%diag(gamma[,k])%*%(sweep(X,2,mu[k,])) / nk 
        }
       
+      mu_vec = as.vector(mu)
       # Compute Likelihood, AIC and BIC
       results_metrics = metrics(X,K,mu,sigma,prop)
       loglik = results_metrics$loglik
@@ -194,7 +195,7 @@ EM_algorithm = function(X,K,max_it=1000, initialization, number_of_initializatio
       bic = results_metrics$bic
       
       loglik_hist = append(loglik_hist,loglik)
-      
+      mu_hist[i,] <- mu_vec
     
       # Stop process if likelihood didn't change
       if (prev_loglik == loglik){break}
@@ -202,8 +203,9 @@ EM_algorithm = function(X,K,max_it=1000, initialization, number_of_initializatio
       prev_loglik = loglik
     
     }
-    
+    mu_hist<-as.data.frame(mu_hist)
     results = list(mu = mu,
+                   mu_hist = mu_hist,
                 sigma = sigma,
                 prop = prop,
                 loglik = loglik,
@@ -328,7 +330,7 @@ df_ell <- rbind(df_ell, cbind(as.data.frame(ellipse(M, centre=centre)),group=clu
 colnames(df_ell) <- c("x1", "x2", "group")
 #drawing
 mu_df = data.frame(mu)
-p <- ggplot(data=df, aes(x=x1, y=x2,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x1, y=x2,colour=group), size=1, linetype=2) +geom_point(data=mu_df,aes(x=mu_df[,1],y=mu_df[,2]), shape=4, color='black',size=3)
+p <- ggplot(data=df, aes(x=x1, y=x2,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x1, y=x2,colour=group), size=1, linetype=2) +geom_point(data=mu_df,aes(x=mu_df[,1],y=mu_df[,2]), shape=4, color='black',size=3) + theme_bw()
   
 return(p)
 }
@@ -359,15 +361,46 @@ for(g in c(1:K)){
 df_ell <- rbind(df_ell, cbind(as.data.frame(with(df[df$group==clusters[g],], ellipse(cor(x, y), 
                                          scale=c(sd(x),sd(y)), 
                                          centre=c(mean(x),mean(y))))),group=clusters[g]))
-
 }
 
 #drawing
-p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2)
+p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2) + theme_bw()
   
 return(p)
 }
 
+
+plot_hist_mu = function(data_mu, K){
+
+data_mu = na.omit(data_mu)
+data_mu1 <- data_mu %>% select(c(1:K))
+data_mu2 <- data_mu %>% select(c((K+1):ncol(data_mu)))
+
+data_mu1$index=c(1:nrow(data_mu1))
+data_mu2$index=c(1:nrow(data_mu2))
+
+df1 <- melt(data_mu1 ,  id.vars = 'index', variable.name = 'mu_clusters')
+df2 <- melt(data_mu2 ,  id.vars = 'index', variable.name = 'mu_clusters')
+
+p1 <- ggplot(df1, aes(index, value)) + geom_point(aes(colour = variable), shape=4) + geom_path(aes(colour = variable))+ theme_bw()
+p2 <- ggplot(df2, aes(index, value)) + geom_point(aes(colour = variable), shape=4) + geom_path(aes(colour = variable))+ theme_bw()
+
+plots_mu = list(p1 = p1, p2 = p2)
+return(plots_mu)
+    
+}
+
+plot_hist_loglik = function(loglik_hist){
+
+data_loglik = as.data.frame(loglik_hist)
+data_loglik$index=c(1:nrow(data_loglik))
+colnames(data_loglik) = c("loglik_hist", "index")
+
+p1 <- ggplot(data_loglik, aes(index,loglik_hist)) + geom_point(shape=4) + geom_path()+ theme_bw()
+
+return(p1)
+
+}
 
 ```
 
@@ -407,39 +440,121 @@ WIP: Explain what is the adjustedRandIndex and classError, provide the interpret
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 
-# WIP: axis names, titles for the graphs (indicating number of clusters and initialization), make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex. 
+# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex. 
 
 n = dim(X)[1]
 
 plots_list=list()
 c_error_vec = c()
 adj_rndI_vec = c()
+mu_list = list()
+loglik_list = list()
 plt_n = 1
+
+
 for(K in c(2:5)){
   for(init_EM in c("random_centroids", "k_means")){
     
 results_EM = EM_algorithm(X, K, initialization = init_EM)
 mu_em = results_EM$mu
+mu_vec = results_EM$mu_hist
 sigma_em = results_EM$sigma
+
 groups_pred = classify(X,K,mu_em,sigma_em, prop = results_EM$prop)
 
 #building the list of plots
 p1 <- plot_ellipses(X,K,mu_em,sigma_em,groups_pred)
-plots_list[[plt_n]]=p1
-plt_n <- plt_n + 1
+plots_list[[plt_n]] = p1
+
+
+#acummulate of mu_hist and loglik_hist for all the runs
+mu_list[[plt_n]] = mu_vec
+loglik_list[[plt_n]] = results_EM$loglik_hist
 
 #evaluating the clustering
 adj_rndI_vec = append(adj_rndI_vec, adjustedRandIndex(groups_pred, y))
 c_error_vec = append(c_error_vec, classError(groups_pred, y))
+
+
+
+plt_n <- plt_n + 1
+
 }
 }
 
 labels_error <- paste("error=", as.character(round(adj_rndI_vec,4)), sep="")
 
-ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none")
+ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none") 
 
 ```
 
+
+```{r mu plots, fig.height=18, fig.width=12}
+
+K=2
+plots_list = c()
+for (plt_n in c(1:length(mu_list))){
+
+data_mu = mu_list[[plt_n]]
+
+# plots_list = plot_hist_mu(data_mu, K)
+plots_list = append(plots_list,plot_hist_mu(data_mu, K))
+
+if((plt_n %% 2) == 0) {
+K<-K+1
+}
+
+}
+
+ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
+```
+
+```{r loglik plots, fig.height=18, fig.width=12}
+plots_list = list()
+for (plt_n in c(1:length(loglik_list))){
+  loglik_hist = loglik_list[[plt_n]]
+  p1 = plot_hist_loglik(loglik_hist)
+  plots_list[[plt_n]] = p1
+}
+
+ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
+
+# plot_list_loglik = function(loglik_list){
+# 
+# 
+# data_loglik <- matrix(ncol=length(loglik_list), nrow=1000)
+# 
+# plots_list = c()
+# for (plt_n in c(1:length(loglik_list))){
+# 
+# data_loglik[,1] <- loglik_list[[1]]
+# data_loglik[,1] <- loglik_list[[1]]
+# loglik_list[[1]]
+# plots_list = append(plots_list,plot_hist_mu(data_mu, K))
+# 
+# if((plt_n %% 2) == 0) {
+# K<-K+1
+# }
+# 
+# }
+# 
+# ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
+#   
+#   
+# data_loglik = as.data.frame(loglik_hist)
+# colnames(data_loglik) = c("loglik_hist", "index")
+# 
+# data_loglik$index=c(1:nrow(data_loglik))
+# 
+# p1 <- ggplot(data_loglik, aes(index,loglik_hist)) + geom_point(shape=4) + geom_path()+ theme_bw()
+# 
+# return(p1)
+# 
+# }
+
+
+
+```
 
 ```{r}
 
@@ -524,12 +639,6 @@ legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8
 plot(aic_vector~c(2:7))
 plot(bic_vector~c(2:7))
 
-
-
-
-
-
-
 ```
 The log-likelihoods derived from cross-validation indicate that on average using 3 clusters produces the higher log-likelihood.
 The AIC indicates that 7 clusters would be the best option, while the BIC suggests using 3 clusters. Let us remember that the AIC does not take into consideration the sample size ($n=178$ in our case), so it could be giving advantage to models with too many clusters without considering that the sample size is not that big. 
@@ -563,7 +672,6 @@ counter = 1
 # Run the process each time adding an extra variable
 # Starting from the first 3 variables and onward 
 for (i in 4:10){
-  print('------------')
   print(i)
  
   # Define the data
@@ -580,7 +688,7 @@ for (i in 4:10){
   
   # EM-algorithm for different number of clusters
   for (number_of_clusters in 2:7) {
-    
+    print(number_of_clusters)
     # run EM-algorithm
     results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
     # save AIC and BIC
@@ -592,7 +700,6 @@ for (i in 4:10){
     # save likelihood results from cross validation  
     validation_loglik = append(validation_loglik,logliks)
     num_clusters = append(num_clusters,rep(number_of_clusters,k_fold))
-    
   }
 
   validation_loglik_list[[counter]] = validation_loglik
@@ -601,36 +708,14 @@ for (i in 4:10){
   
   counter = counter + 1
   
-}
-
-```
-
-
-```{r}
-
-for (i in 1:length(validation_loglik_list)){
-  boxplot(validation_loglik_list[[i]]~num_clusters)
-  points(tapply(validation_loglik_list[[i]], num_clusters, mean), col="blue", pch=19)
-  legend("bottomleft", inset=.02, legend=c("Mean"), col=c("blue"), pch=19, cex=0.8)
-  plot(aic_vector_list[[i]]~c(2:7))
-  plot(bic_vector_list[[i]]~c(2:7))
+ 
 }
 
 
-```
 
-Let us observe the results using the first 9 variables in the dataset and extracting the true number of clusters ($K=3$). 
-
-```{r}
-
-X = as.matrix(wine[,2:10])
-results = EM_algorithm(X = X, K = 3, initialization = "random_centroids")
-clusters = classify(X = as.matrix(wine[,2:i]), K = 3, mu = results$mu, sigma = results$sigma, prop = results$prop)
-
-my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
-pairs(X, pch = 19,  cex = 0.5,
-      col = my_cols[clusters],
-      lower.panel=NULL)
 
 ```
+
+
+
 

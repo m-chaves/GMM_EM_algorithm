@@ -549,7 +549,6 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
 # are the means and sigmas the same?
 
 
-
 # is the classification the same?
 
 
@@ -567,7 +566,6 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
 
 ```{r}
 # pending!!!!!!!!!!!
-
 
 
 # comparison the clusters of each technique using classError and adjustedRandIndex from the Mclust package

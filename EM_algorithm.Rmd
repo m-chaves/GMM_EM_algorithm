@@ -8,7 +8,7 @@ output: html_document
 
 In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequated number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type.   
 
-```{r libraries}
+```{r libraries, include = FALSE}
 library(pgmm)
 library(ellipse)
 library(ggplot2)
@@ -499,7 +499,7 @@ WIP: Explain what is the adjustedRandIndex and classError, provide the interpret
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 
-# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex. 
+# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex.
 
 n = dim(X)[1]
 
@@ -523,6 +523,14 @@ groups_pred = classify(X,K,mu_em,sigma_em, prop = results_EM$prop)
 
 #building the list of plots
 p1 <- plot_ellipses(X,K,mu_em,sigma_em,groups_pred)
+
+if (K==2 & init_EM=="random_centroids"){
+  p1<-p1 + labs(title = "Initialization: Random centroids", subtitle = "K = 2")
+} else if (K==2 & init_EM=="k_means"){
+  p1<-p1 + labs(title = "Initialization: K-means", subtitle = "K = 2")
+} else{
+  p1<-p1 + labs(subtitle = paste("K =", as.character(K),sep=""))
+}
 plots_list[[plt_n]] = p1
 
 
@@ -531,19 +539,27 @@ mu_list[[plt_n]] = mu_vec
 loglik_list[[plt_n]] = results_EM$loglik_hist
 
 #evaluating the clustering
-adj_rndI_vec = append(adj_rndI_vec, adjustedRandIndex(groups_pred, y))
-c_error_vec = append(c_error_vec, classError(groups_pred, y))
-
-
+adj_rndI_vec = append(adj_rndI_vec, adjustedRandIndex(groups_pred, y)) 
+c_error_vec = append(c_error_vec, classError(groups_pred, y)) 
 
 plt_n <- plt_n + 1
 
 }
 }
 
-labels_error <- paste("error=", as.character(round(adj_rndI_vec,4)), sep="")
+error_rate_vec =c()
+for (cnt in c(1:length(c_error_vec))){
+  if (cnt%%2==0){
+  error_rate_vec = append(error_rate_vec, c_error_vec[[cnt]]) 
+}
+}
 
-ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none") 
+
+labels_error <- paste("ARI=", as.character(round(adj_rndI_vec,4)), ", CE=", as.character(round(error_rate_vec,4)),sep="")
+
+plt_final <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none",   hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
+
+annotate_figure(plt_final, top = text_grob("Clustering with GMM using EM algorithm in wine data where: x1=Alcohol x2=Fixed Acidity ", color = "red", face = "bold", size = 16), left = text_grob("Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "blue", face = "bold", size = 14, rot=90))
 
 ```
 
@@ -611,14 +627,11 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
 # 
 # }
 
-
-
 ```
 
 ```{r}
 
 # are the means and sigmas the same?
-
 
 
 # is the classification the same?
@@ -638,7 +651,6 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
 
 ```{r}
 # pending!!!!!!!!!!!
-
 
 
 # comparison the clusters of each technique using classError and adjustedRandIndex from the Mclust package

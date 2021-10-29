@@ -584,7 +584,8 @@ labels_error <- paste("ARI=", as.character(round(adj_rndI_vec,4)), ", CE=", as.c
 
 plt_final <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none",   hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
 
-annotate_figure(plt_final, top = text_grob("Clustering with GMM using EM algorithm in wine data where: x1=Alcohol x2=Fixed Acidity ", color = "black", face = "bold", size = 16), left = text_grob("Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "blue", face = "bold", size = 14, rot=90))
+#annotate_figure(plt_final, top = text_grob("Clustering with GMM using EM algorithm in wine data where: x1=Alcohol x2=Fixed Acidity ", color = "black", face = "bold", size = 16), left = text_grob("Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "blue", face = "bold", size = 14, rot=90))
+annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM using the EM algorithm by number of clusters and type of initialization \n Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "black", face = "bold", size = 14))
 
 ```
 

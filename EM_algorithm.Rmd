@@ -1,7 +1,16 @@
 ---
 title: "EM algorithm for multivariate data"
 author: "Mariana Chaves and Franz Franco Gallo"
-output: html_document
+output:
+  html_document:
+    code_download: yes
+    highlight: tango
+    number_sections: no
+    theme: flatly
+    toc: TRUE
+    toc_float: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction
@@ -767,7 +776,6 @@ max_clusters = 7
 # Run the process each time adding an extra variable
 # Starting from the first 3 variables and onward 
 for (i in 4:10){
-  print(i)
  
   # Define the data
   X = as.matrix(wine[,2:i])
@@ -783,7 +791,7 @@ for (i in 4:10){
   
   # EM-algorithm for different number of clusters
   for (number_of_clusters in min_clusters:max_clusters) {
-    print(number_of_clusters)
+    
     # run EM-algorithm
     results = EM_algorithm(X, K = number_of_clusters, initialization = "random_centroids")
     # save AIC and BIC
@@ -809,7 +817,7 @@ for (i in 4:10){
 ```
 
 
-```{r}
+```{r, fig.height=24, fig.width=12}
 
 #WIP: make nice graphs
 
@@ -818,6 +826,8 @@ for (i in 1:length(validation_loglik_list)){
   plots_list[[2*i-1]] = plot_AIC_BIC_by_cluster(aic_vector_list[[i]], bic_vector_list[[i]], min_clusters, max_clusters)
   plots_list[[2*i]] = plot_loglik_by_cluster(validation_loglik_list[[i]], num_clusters)
 }
+
+ggarrange(plotlist = plots_list, nrow = length(validation_loglik_list), ncol = 2)
 
 
 ```

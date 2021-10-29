@@ -417,16 +417,48 @@ plot_AIC_BIC_by_cluster = function(aic_vector,bic_vector,min_clusters,max_cluste
   p: a plot of AIC and BIC by number of clusters'
   
   
-  # Define appropiate dataset
+  # Define appropriate dataset
   df = data.frame(c(aic_vector,bic_vector), rep(min_clusters:max_clusters, 2), rep(c("AIC","BIC"),each = length(min_clusters:max_clusters)))
   names(df) = c('Information criteria', 'Number of clusters','Type')
   
-  #plot
+  # plot
   p = df %>% 
-    ggplot(aes(x=`Number of clusters`, y=`Information criteria`, shape=Type, color=Type)) + 
+    ggplot(aes(x=`Number of clusters`, y=`Information criteria`, color=Type)) + 
     geom_point() + 
     theme_bw()
   
+  return(p)
+}
+
+plot_loglik_by_cluster = function(validation_loglik,num_clusters){
+  '
+  This function plots the boxplots of the loglikelihoods obtained from the cross-validation process by the number of clusters. 
+  The mean of the loglikelihoods is presented in red. 
+  
+  Input:
+  validation_loglik: vector of log-likelihoods obtain from crossvalidation
+  num_clusters: vector with the corresponding number of clusters associated to each log-likelihood
+  
+  Output: 
+  p: a boxplot
+  
+  '
+  
+  # Define appropriate datasets from the plot
+  df =  data.frame(validation_loglik, as.factor(num_clusters))
+  names(df) = c('Log-likelihood','Number of clusters')
+  df_mean = df %>% 
+    group_by(`Number of clusters`) %>% 
+    summarise(Mean = mean(`Log-likelihood`))
+  
+  # plot
+  p = df %>% 
+    ggplot(aes(x=`Number of clusters`, y=`Log-likelihood`)) +
+    geom_boxplot() +
+    geom_point(data = df_mean, aes(`Number of clusters`, y=`Mean`, colour = 'Mean'), show.legend = TRUE) +
+    scale_color_manual(values = c("Mean" = 'brown2')) +
+    labs(color = "") +
+    theme_bw()
   return(p)
 }
 
@@ -671,9 +703,11 @@ plot(aic_vector~c(2:7))
 plot(bic_vector~c(2:7))
 
 
-
+plot_AIC_BIC_by_cluster(aic_vector, bic_vector, min_clusters, max_clusters)
+plot_loglik_by_cluster(validation_loglik, num_clusters)
 
 ```
+
 The log-likelihoods derived from cross-validation indicate that on average using 3 clusters produces the higher log-likelihood.
 The AIC indicates that 7 clusters would be the best option, while the BIC suggests using 3 clusters. Let us remember that the AIC does not take into consideration the sample size ($n=178$ in our case), so it could be giving advantage to models with too many clusters without considering that the sample size is not that big. 
 

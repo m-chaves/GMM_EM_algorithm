@@ -10,7 +10,7 @@ output:
     toc: TRUE
     toc_float: TRUE
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 # Introduction
@@ -510,7 +510,9 @@ data(wine)
 K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
-plot_ellipses_CI(X,K,y)
+plot_ellipses_CI(X,K,y) +
+  xlab(colnames(X)[1]) +
+  ylab(colnames(X)[2])
 
 
 ```
@@ -524,7 +526,7 @@ WIP: Explain what is the adjustedRandIndex and classError, provide the interpret
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 
-# WIP: axis names, titles for the graphs, make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex.
+# WIP: make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex.
 
 n = dim(X)[1]
 
@@ -585,12 +587,12 @@ labels_error <- paste("ARI=", as.character(round(adj_rndI_vec,4)), ", CE=", as.c
 plt_final <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none",   hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
 
 #annotate_figure(plt_final, top = text_grob("Clustering with GMM using EM algorithm in wine data where: x1=Alcohol x2=Fixed Acidity ", color = "black", face = "bold", size = 16), left = text_grob("Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "blue", face = "bold", size = 14, rot=90))
-annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM using the EM algorithm by number of clusters and type of initialization \n Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "black", face = "bold", size = 14))
+annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM using the EM algorithm by number of clusters and type of initialization \n Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "black", face = "bold", size = 12))
 
 ```
 
 
-```{r mu plots, fig.height=18, fig.width=12}
+```{r mu plots, fig.height=12, fig.width=12}
 
 K=2
 plots_list = c()
@@ -762,7 +764,7 @@ In this section we apply the EM-algorithm using more variables of the dataset an
 
 We repeat the same process as in the previous section. That is, using the information criteria and the cross-validation log-likelihood.
 
-```{r number of cluster selection for higher dimensions case}
+```{r number of cluster selection for higher dimensions case, fig.height=16, fig.width=12}
 
 #Empty lists to save the results
 validation_loglik_list = list()
@@ -776,7 +778,7 @@ max_clusters = 7
 
 # Run the process each time adding an extra variable
 # Starting from the first 3 variables and onward 
-for (i in 4:10){
+for (i in 4:8){
  
   # Define the data
   X = as.matrix(wine[,2:i])
@@ -815,40 +817,62 @@ for (i in 4:10){
  
 }
 
-```
 
+# Plot results
 
-```{r, fig.height=24, fig.width=12}
+# Defining dimensions of the axis to have standard scale for all plots
+max_axis = c(unlist(aic_vector_list),unlist(bic_vector_list)) %>% max()
+min_axis = c(unlist(aic_vector_list),unlist(bic_vector_list)) %>% min()
+edge_size = (max_axis-min_axis)/20
+max_axis = max_axis + edge_size
+min_axis = min_axis - edge_size
 
-#WIP: make nice graphs
+max_axis_ll = unlist(validation_loglik_list) %>% max()
+min_axis_ll = unlist(validation_loglik_list) %>% min()
+edge_size_ll = (max_axis_ll - min_axis_ll)/20
+max_axis_ll = max_axis_ll + edge_size_ll
+min_axis_ll = min_axis_ll - edge_size_ll
 
+# Plots
 plots_list = list()
 for (i in 1:length(validation_loglik_list)){
-  plots_list[[2*i-1]] = plot_AIC_BIC_by_cluster(aic_vector_list[[i]], bic_vector_list[[i]], min_clusters, max_clusters)
-  plots_list[[2*i]] = plot_loglik_by_cluster(validation_loglik_list[[i]], num_clusters)
+  plots_list[[2*i-1]] = plot_AIC_BIC_by_cluster(aic_vector_list[[i]], bic_vector_list[[i]], min_clusters, max_clusters) + 
+    ggtitle(paste(as.character(i+2),' features')) +
+    ylim(min_axis, max_axis)
+  plots_list[[2*i]] = plot_loglik_by_cluster(validation_loglik_list[[i]], num_clusters) +
+    ggtitle(paste(as.character(i+2),' features')) +
+    ylim(min_axis_ll, max_axis_ll)
 }
 
-ggarrange(plotlist = plots_list, nrow = length(validation_loglik_list), ncol = 2)
-
+ggarrange(plotlist = plots_list, nrow = length(validation_loglik_list), ncol = 2) %>% 
+  annotate_figure(top = text_grob("AIC, BIC and cross-validation log-likelihood by number of clusters and features", color = "black", face = "bold", size = 12))
 
 ```
 
-Let us observe the results using the first 9 variables in the dataset and extracting the true number of clusters ($K=3$). 
 
-```{r}
+In most of the cases, the BIC and the cross-validation log-likelihood propose 2 clusters. 
+On the other hand, the AIC is prompt to choose a higher number of clusters. 
+This behavior coincides with what we observed in the bivariate case.
 
-#WIP: make nice graphs
+The separation between AIC and BIC increases when we add more variables to the model.
+This occurs because the BIC applies a stronger penalty to less parsimonious models. 
+Also, all the metrics, AIC, BIC and log-likelihood decrease when the number of variables increases, implying that adding these variables is not helping to improve the model. 
+Nevertheless, using a stepwise variable selection process we could add some well-chosen variables that could improve the model. 
 
-X = as.matrix(wine[,2:10])
+Let us observe the data for the first 7 variables and visualize the true clusters and the ones generated by the model when $K=3$.
+
+```{r EM for 3 clusters 7 variables, fig.height=7, fig.width=12}
+
+X = as.matrix(wine[,2:8])
 results = EM_algorithm(X = X, K = 3, initialization = "random_centroids")
-clusters = classify(X = as.matrix(wine[,2:i]), K = 3, mu = results$mu, sigma = results$sigma, prop = results$prop)
+clusters = classify(X = X, K = 3, mu = results$mu, sigma = results$sigma, prop = results$prop)
 
-my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")  
-pairs(X, pch = 19,  cex = 0.5,
-      col = my_cols[clusters],
-      lower.panel=NULL)
-
+my_cols <- c("#00AFBB", "#E7B800", "#FC4E07")
+pairs(X,  pch = c(1,4,16)[clusters], cex = 0.8, col = my_cols[y], lower.panel=NULL, oma=c(3,3,10,3))
+legend("top", col = my_cols, legend = levels(as.factor(c("Barolo", "Grignolino", "Barbera")[y])), pch = 20, xpd = NA, ncol = 3, bty = "n", inset = 0.01, pt.cex = 1.5)
+legend("top", pch = 1:3, legend = levels(as.factor(clusters)), col = "black",  xpd = NA, ncol = 3, bty = "n", inset = -0.03)
+title("First 7 variables of the wine dataset by the true clusters and the clusters generated by a GMM")
 ```
 
-
-
+In the scatter matrix, except for the "alcohol" variable, we see that 2 of the true clusters (Barbera and Barolo) usually overlap.
+It is probably for this reason that the BIC and the log-likelihood from cross-validation were suggesting extracting only 2 clusters.

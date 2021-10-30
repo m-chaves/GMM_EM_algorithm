@@ -393,10 +393,10 @@ plot_ellipses_CI = function(X,K,groups){
   p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2) + theme_bw()
     
   return(p)
-  }
+}
+
   
-  
-  plot_hist_mu = function(data_mu, K){
+plot_hist_mu = function(data_mu, K){
   
   data_mu = na.omit(data_mu)
   data_mu1 <- data_mu %>% select(c(1:K))
@@ -491,42 +491,44 @@ plot_loglik_by_cluster = function(validation_loglik,num_clusters){
 
 # Data loading
 
-To start, we will work only with 2 variables: Fixed acidity and Alcohol.  We can see in the following graph that many times the 3 clusters overlap. 
-```{r data loading}
-data(wine)
-X = as.matrix(wine[,c(2,4)])
-y = wine[,1]
-clPairs(X, y)
-
-```
-
-WIP: Add some description of this graph (the one with ellipses) 
+To start, we will work only with 2 variables: Fixed acidity and Alcohol. 
+We can see in the following graph that many times the 3 clusters overlap.
 
 ```{r cluster data, fig.height=4}
-
-#WIP: name axis according to the variables, add groups names (the wine names) 
 
 data(wine)
 K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
+y = c("1 Barolo", "2 Grignolino", "3 Barbera")[y]
 plot_ellipses_CI(X,K,y) +
   xlab(colnames(X)[1]) +
-  ylab(colnames(X)[2])
+  ylab(colnames(X)[2]) +
+  ggtitle('Fixed Acidity and Alcohol of the wines grouped by the true clusters')
 
 
 ```
 
-
 # The EM algorithm
 
-Let us use the EM algorithm in our bivariate dataset using the two types of initialization. 
+Let us use the EM algorithm in our bivariate dataset using the two types of initialization.
+We extract different number of clusters (from 2 to 5 clusters).
+To measure how similar is the clustering to the ground truth we use the Adjusted Rand Index (ARI) and the Classification error (CE).
+
+The Adjusted Rand Index derives from the Rand Index. 
+Both measure the similarity between two partitions of the data.
+These partitions can separate the data in different number of groups.
+For instance, partition A can separate the data in 2 groups, while partition B separates it in 5 groups. 
+This is ideal given that we want to compare the 3 true groups agains different number of clusters.
+The ARI is 0 in the case of random partition, and 1 in the case of perfect agreement between two partitions.
+
+
 
 WIP: Explain what is the adjustedRandIndex and classError, provide the interpretations.
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 
-# WIP: make nicer tooltip of the error (if possible) and report also the result of adjustedRandIndex.
+# WIP: make nicer tooltip of the error (if possible).
 
 n = dim(X)[1]
 
@@ -548,15 +550,19 @@ sigma_em = results_EM$sigma
 
 groups_pred = classify(X,K,mu_em,sigma_em, prop = results_EM$prop)
 
+#evaluating the clustering
+ARI = adjustedRandIndex(groups_pred, y) %>% round(4) %>% as.character()
+CE = classError(groups_pred, y)$errorRate %>% round(4) %>% as.character()
+
 #building the list of plots
 p1 <- plot_ellipses(X,K,mu_em,sigma_em,groups_pred)
 
 if (K==2 & init_EM=="random_centroids"){
-  p1<-p1 + labs(title = "Initialization: Random centroids", subtitle = "K = 2")
+  p1<-p1 + labs(title = "Initialization: Random centroids", subtitle = paste("K = 2"," ARI = ", ARI, " CE = ", CE))
 } else if (K==2 & init_EM=="k_means"){
-  p1<-p1 + labs(title = "Initialization: K-means", subtitle = "K = 2")
+  p1<-p1 + labs(title = "Initialization: K-means", subtitle = paste("K = 2"," ARI = ", ARI, " CE = ", CE))
 } else{
-  p1<-p1 + labs(subtitle = paste("K =", as.character(K),sep=""))
+  p1<-p1 + labs(subtitle = paste("K = ", as.character(K)," ARI = ", ARI, " CE = ", CE))
 }
 plots_list[[plt_n]] = p1
 
@@ -565,28 +571,14 @@ plots_list[[plt_n]] = p1
 mu_list[[plt_n]] = mu_vec
 loglik_list[[plt_n]] = results_EM$loglik_hist
 
-#evaluating the clustering
-adj_rndI_vec = append(adj_rndI_vec, adjustedRandIndex(groups_pred, y)) 
-c_error_vec = append(c_error_vec, classError(groups_pred, y)) 
-
 plt_n <- plt_n + 1
 
 }
+  
 }
 
-error_rate_vec =c()
-for (cnt in c(1:length(c_error_vec))){
-  if (cnt%%2==0){
-  error_rate_vec = append(error_rate_vec, c_error_vec[[cnt]]) 
-}
-}
+plt_final <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = '' ,legend = "none",   hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
 
-
-labels_error <- paste("ARI=", as.character(round(adj_rndI_vec,4)), ", CE=", as.character(round(error_rate_vec,4)),sep="")
-
-plt_final <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 2, labels = labels_error ,legend = "none",   hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
-
-#annotate_figure(plt_final, top = text_grob("Clustering with GMM using EM algorithm in wine data where: x1=Alcohol x2=Fixed Acidity ", color = "black", face = "bold", size = 16), left = text_grob("Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "blue", face = "bold", size = 14, rot=90))
 annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM using the EM algorithm by number of clusters and type of initialization \n Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "black", face = "bold", size = 12))
 
 ```

@@ -15,7 +15,7 @@ editor_options:
 
 # Introduction
 
-In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequated number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type.   
+In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequate number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type. Additionally, we explore two types of initialization for the parameters of the model, we refer to them as random centroids initialization and k-means initialization.    
 
 ```{r libraries, include = FALSE}
 library(pgmm)
@@ -748,18 +748,15 @@ annotate_figure(plt_final, top = text_grob("Comparison between EM algorithm with
 
 ```
 
-Considering the ARI and CE we can confirm that the EM algorithm with random centroids have the best performance. We observe also that the clustering given by the k-means is pretty similar to the EM algorith with k-means initialization, the mean values just change a bit with the iterations in the EM. Something to note is that the grouping made by k-means takes horizontal groups in our data, forming the groups along the x-axis (alcohol), which is the variable that has the lowest variance.
+Considering the ARI and CE we can confirm that the EM algorithm with random centroids have the best performance. We observe also that the clustering given by the k-means is pretty similar to the EM algorith with k-means initialization, the mean values just change a bit with the iterations in the EM. Something to note is that the grouping made by k-means takes horizontal groups in our data, forming the groups along the x-axis (alcohol).
 
 # Number of clusters selection
 
 To select the number of clusters we take into consideration 2 approaches: the information criteria (AIC and BIC), and the likelihood in the validation set using cross-validation.
-
 We experiment extracting from 2 to 7 clusters. 
-
 For the first approach, we apply the EM-algorithm setting different number of clusters and observe the resulting AIC and BIC.
-
 For the second approach, we implement k-fold cross-validation and measure the log-likelihood in each validation sample.    
-
+Given the results in previous sections, we use only random centroids initialization. 
 
 ```{r number of cluster selection for bivariate case, fig.height=4, fig.width=12}
 

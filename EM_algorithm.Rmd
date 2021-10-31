@@ -395,7 +395,6 @@ plot_ellipses_CI = function(X,K,groups){
   return(p)
 }
 
-  
 plot_hist_mu = function(data_mu, K){
   
   data_mu = na.omit(data_mu)
@@ -500,8 +499,8 @@ data(wine)
 K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
-y = c("1 Barolo", "2 Grignolino", "3 Barbera")[y]
-plot_ellipses_CI(X,K,y) +
+y_text = c("1 Barolo", "2 Grignolino", "3 Barbera")[y]
+plot_ellipses_CI(X,K,y_text) +
   xlab(colnames(X)[1]) +
   ylab(colnames(X)[2]) +
   ggtitle('Fixed Acidity and Alcohol of the wines grouped by the true clusters')
@@ -521,14 +520,11 @@ These partitions can separate the data in different number of groups.
 For instance, partition A can separate the data in 2 groups, while partition B separates it in 5 groups. 
 This is ideal given that we want to compare the 3 true groups agains different number of clusters.
 The ARI is 0 in the case of random partition, and 1 in the case of perfect agreement between two partitions.
+Therefore, higher ARI indicates better results.
+On the other hand, lower Classification error (CE) implies better results.
 
-
-
-WIP: Explain what is the adjustedRandIndex and classError, provide the interpretations.
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
-
-# WIP: make nicer tooltip of the error (if possible).
 
 n = dim(X)[1]
 
@@ -583,8 +579,17 @@ annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM usi
 
 ```
 
+Just by observing the ARI and CE we cannot establish a winner between the two types of initialization. 
+Nonetheless, by observing the groupings, it is clear that the option with three clusters and random centroids initialization is the one that emulates the most the truth groups. 
+This one shows also good values of the ARI and CE compared to the others. 
 
-```{r mu plots, fig.height=12, fig.width=12}
+Let us analyze how $\mu$ evolves from their initialization to their final positions. 
+
+
+```{r mu plots, fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
+
+#WIP: add interpretation to the results of the means, add titles with number of clusters, initialization. axis y should say "Alcohol" or "Fixed Acidity".
+
 
 K=2
 plots_list = c()
@@ -605,6 +610,9 @@ ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
 ```
 
 ```{r loglik plots, fig.height=18, fig.width=12}
+
+#WIP: add interpretations on loglikelihood
+
 plots_list = list()
 for (plt_n in c(1:length(loglik_list))){
   loglik_hist = loglik_list[[plt_n]]

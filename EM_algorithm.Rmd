@@ -401,6 +401,17 @@ plot_ellipses_CI = function(X,K,groups){
 
 plot_hist_mu = function(data_mu, K){
   
+  "
+  This funtion plots the historical of the mu updates
+  
+  Inputs:
+  data_mu: vector containing the values of means in all the iterations
+  K: the number of clusters
+  
+  Outputs:
+  plots_mu: list of 2 plots for means in each variable
+  "
+  
   data_mu = na.omit(data_mu)
   data_mu1 <- data_mu %>% select(c(1:K))
   data_mu2 <- data_mu %>% select(c((K+1):ncol(data_mu)))
@@ -420,6 +431,15 @@ plot_hist_mu = function(data_mu, K){
 }
 
 plot_hist_loglik = function(loglik_hist){
+  "
+  This funtion plots the historical of the loglikelihood
+  
+  Inputs:
+  loglik_hist: vector containing the historical values of the likelihood obtained after EM algorithm
+  
+  Outputs:
+  p1: plot of the likelihood by the number of iteration.
+  "
 
   data_loglik = as.data.frame(loglik_hist)
   data_loglik$index=c(1:nrow(data_loglik))

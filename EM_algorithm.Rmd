@@ -746,7 +746,7 @@ Moreover we can also compare the values of AIC and BIC for the 2 initializations
 
 # EM algorithm vs k-means
 
-```{r fig.width=10, message=FALSE, warning=FALSE}
+```{r comparison with k-means, fig.height=9, fig.width=10, message=FALSE, warning=FALSE}
 
 #applying k-means
 kmeans_cl = kmeans(X, centers=3, nstart = 100, iter.max = 25)

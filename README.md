@@ -2,8 +2,11 @@
 # Project Clustering: Expectation Maximization(EM) algorithm - Gaussian Mixture Models(GMM)
 In this work, we implement from scratch the EM-algorithm for GMM in R. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequate number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type. Additionally, we explore two types of initialization for the parameters of the model, we refer to them as random centroids initialization and k-means initialization.
 
-#### Author: Mariana Chavez - Franz Franco Gallo
+#### Authors: Mariana Chaves - Franz Franco Gallo
 
+To see the complete work download the [EM_algorithm.html file](https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm.html), to see the code check the [EM_algorithm.Rmd file](https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm.Rmd).
+
+Let us show you a glace of the sections and figures:  
 
 ## Useful functions
 

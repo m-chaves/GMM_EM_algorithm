@@ -668,7 +668,7 @@ The final value of the means is different depending for the initialization.
 
 Let us observe the final means K=3 in the table below.
 
-```{r means for K=3 }
+```{r means for 3 clusters }
 mu_rm = mu_list[[3]][dim(mu_list[[3]])[1],] %>% round(2) #means for k=3 random centroids init
 mu_km = mu_list[[4]][dim(mu_list[[4]])[1],] %>% round(2) #means for k=3 k-means init
 ```

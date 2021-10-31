@@ -92,7 +92,7 @@ initialization.k_means = function(X,K){
   K: the number of groups
   "
   n = dim(X)[1]
-  kmeans_result = kmeans(X, K)
+  kmeans_result = kmeans(X, K, nstart = 25)
   mu = as.matrix(kmeans_result$centers)
   sigma = lapply(1:K, FUN = function(i){var(X[kmeans_result$cluster == i,])})
   prop = kmeans_result$size / n
@@ -383,14 +383,18 @@ plot_ellipses_CI = function(X,K,groups){
   #calculating ellipses
   clusters <- sort(unique(df$group))
   df_ell <- data.frame()
+  mu_df <- matrix(ncol=2, nrow=K)
   for(g in c(1:K)){
   df_ell <- rbind(df_ell, cbind(as.data.frame(with(df[df$group==clusters[g],], ellipse(cor(x, y), 
                                            scale=c(sd(x),sd(y)), 
                                            centre=c(mean(x),mean(y))))),group=clusters[g]))
+  df1<-df[df$group==clusters[g],]
+  mu_df[g,] = c(mean(df1$x),mean(df1$y))
+  mu_df <- data.frame(mu_df)
   }
   
   #drawing
-  p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2) + theme_bw()
+  p <- ggplot(data=df, aes(x=x, y=y,colour=group)) + geom_point(size=1.5, alpha=.6) + geom_path(data=df_ell, aes(x=x, y=y,colour=group), size=1, linetype=2) + theme_bw() + geom_point(data=mu_df,aes(x=mu_df[,1],y=mu_df[,2]), shape=4, color='black',size=3)
     
   return(p)
 }
@@ -490,8 +494,8 @@ plot_loglik_by_cluster = function(validation_loglik,num_clusters){
 
 # Data loading
 
-To start, we will work only with 2 variables: Fixed acidity and Alcohol. 
-We can see in the following graph that many times the 3 clusters overlap.
+To start, we will work only with 2 variables: Fixed acidity and Alcohol.  We can see in the following graph that the 3 clusters overlap each other in some regions. 
+We plot initial clusters defined by the ellipses with 95% Confidence Interval, whose parameters are defined by the mean (centers) and the covariance matrix in each cluster. 
 
 ```{r cluster data, fig.height=4}
 
@@ -500,18 +504,17 @@ K = 3
 X = as.matrix(wine[,c(2,4)])
 y = wine[,1]
 y_text = c("1 Barolo", "2 Grignolino", "3 Barbera")[y]
-plot_ellipses_CI(X,K,y_text) +
+plt1 = plot_ellipses_CI(X,K,y_text) +
   xlab(colnames(X)[1]) +
-  ylab(colnames(X)[2]) +
-  ggtitle('Fixed Acidity and Alcohol of the wines grouped by the true clusters')
-
+  ylab(colnames(X)[2]) 
+plt1 +  ggtitle('Fixed Acidity and Alcohol of the wines grouped by the true clusters')
 
 ```
 
 # The EM algorithm
 
-Let us use the EM algorithm in our bivariate dataset using the two types of initialization.
-We extract different number of clusters (from 2 to 5 clusters).
+Let us use the EM algorithm in our bivariate dataset using the two types of initialization: random centroids and k-means 
+For each initialization run the EM algorithm with values of $K = 2,3,4,5$ clusters
 To measure how similar is the clustering to the ground truth we use the Adjusted Rand Index (ARI) and the Classification error (CE).
 
 The Adjusted Rand Index derives from the Rand Index. 
@@ -520,9 +523,8 @@ These partitions can separate the data in different number of groups.
 For instance, partition A can separate the data in 2 groups, while partition B separates it in 5 groups. 
 This is ideal given that we want to compare the 3 true groups agains different number of clusters.
 The ARI is 0 in the case of random partition, and 1 in the case of perfect agreement between two partitions.
-Therefore, higher ARI indicates better results.
-On the other hand, lower Classification error (CE) implies better results.
-
+Whereas the CE computes the error rate of EM clustering relative to the original clustering.
+Based on these metrics we can select the clustering with better performance as the one with values ARI near 1 and CE near 0.
 
 ```{r ellipses cluster 2var, fig.height=18, fig.width=12}
 
@@ -533,6 +535,8 @@ c_error_vec = c()
 adj_rndI_vec = c()
 mu_list = list()
 loglik_list = list()
+AIC_list = c()
+BIC_list = c()
 plt_n = 1
 
 
@@ -549,9 +553,18 @@ groups_pred = classify(X,K,mu_em,sigma_em, prop = results_EM$prop)
 #evaluating the clustering
 ARI = adjustedRandIndex(groups_pred, y) %>% round(4) %>% as.character()
 CE = classError(groups_pred, y)$errorRate %>% round(4) %>% as.character()
+adj_rndI_vec = append(adj_rndI_vec,ARI)
+c_error_vec = append(c_error_vec, CE)
 
 #building the list of plots
 p1 <- plot_ellipses(X,K,mu_em,sigma_em,groups_pred)
+
+if(K==3 & init_EM=="random_centroids"){
+  plt2 <- p1
+}
+if(K==3 & init_EM=="k_means"){
+  plt3 <- p1
+}
 
 if (K==2 & init_EM=="random_centroids"){
   p1<-p1 + labs(title = "Initialization: Random centroids", subtitle = paste("K = 2"," ARI = ", ARI, " CE = ", CE))
@@ -566,6 +579,8 @@ plots_list[[plt_n]] = p1
 #acummulate of mu_hist and loglik_hist for all the runs
 mu_list[[plt_n]] = mu_vec
 loglik_list[[plt_n]] = results_EM$loglik_hist
+AIC_list = append(AIC_list, results_EM$aic)
+BIC_list = append(BIC_list, results_EM$bic)
 
 plt_n <- plt_n + 1
 
@@ -579,26 +594,58 @@ annotate_figure(plt_final, top = text_grob("Final clusters determined by GMM usi
 
 ```
 
-Just by observing the ARI and CE we cannot establish a winner between the two types of initialization. 
-Nonetheless, by observing the groupings, it is clear that the option with three clusters and random centroids initialization is the one that emulates the most the truth groups. 
+In general we can say that the the initialization with random centroids has better performance in clustering the bivariate wine dataset. 
+It is clear that the option with three clusters and random centroids initialization is the one that emulates the most the truth groups. 
 This one shows also good values of the ARI and CE compared to the others. 
+
+For larger values of $K$ the clustering with random centroids starts doing erratic clusterings, while the k-means keeps a similar pattern. 
+
+| Initialization | K  | ARI  | CE |
+| --- | --- | --- | --- |
+| Random centroids | 2 | `r adj_rndI_vec[1]` | `r c_error_vec[1]` |
+| K-means | 2 | `r adj_rndI_vec[2]` | `r c_error_vec[1]` |
+| Random centroids | 3 | ** `r adj_rndI_vec[3]` ** | ** `r c_error_vec[1]`  ** |
+| K-means | 3| `r adj_rndI_vec[4]` | `r c_error_vec[1]` |
+| Random centroids | 4 | `r adj_rndI_vec[5]` | `r c_error_vec[1]` |
+| K-means | 4 | `r adj_rndI_vec[6]` | `r c_error_vec[1]` |
+| Random centroids | 5 | `r adj_rndI_vec[7]` | `r c_error_vec[1]` |
+| K-means | 5 | `r adj_rndI_vec[8]` | `r c_error_vec[1]` |
+
 
 Let us analyze how $\mu$ evolves from their initialization to their final positions. 
 
 
 ```{r mu plots, fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
 
-#WIP: add interpretation to the results of the means, add titles with number of clusters, initialization. axis y should say "Alcohol" or "Fixed Acidity".
-
-
 K=2
 plots_list = c()
 for (plt_n in c(1:length(mu_list))){
-
 data_mu = mu_list[[plt_n]]
 
 # plots_list = plot_hist_mu(data_mu, K)
-plots_list = append(plots_list,plot_hist_mu(data_mu, K))
+
+p1 <- plot_hist_mu(data_mu, K)
+p1_1<- p1[[1]] + ylab(colnames(X)[1]) + xlab('Iteration')
+p1_2<- p1[[2]] + ylab(colnames(X)[2]) + xlab('Iteration')
+if (plt_n%%2 == 1 & K==2){
+  p1_1<-p1_1 + labs(title = "Init: Random centroids") 
+  p1_2<-p1_2 + labs(subtitle = paste("K =", as.character(K),sep="")) 
+  
+}else if(plt_n%%2 == 0 & K==2){
+  p1_1<-p1_1 + labs(title = "Init: K-means") 
+  p1_2<-p1_2 + labs(subtitle = paste("K =", as.character(K),sep="")) 
+} 
+
+else{
+  p1_1<-p1_1 + labs(subtitle = paste("K =", as.character(K),sep="")) 
+  p1_2<-p1_2 + labs(subtitle = paste("K =", as.character(K),sep="")) 
+
+}
+p1[[1]] <- p1_1
+p1[[2]] <- p1_2
+
+
+plots_list = append(plots_list,p1)
 
 if((plt_n %% 2) == 0) {
 K<-K+1
@@ -606,87 +653,97 @@ K<-K+1
 
 }
 
-ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
+plt_hist_mu <- ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none") 
+
+annotate_figure(plt_hist_mu, top = text_grob("Historical values for the mu updates using the EM algorithm by number of clusters and type of initialization", color = "black", face = "bold", size = 12))
+```
+The convergence with K-means initialization is smother and faster than the random centroids, that is, its number of iterations in general is smaller. 
+Which makes sense given that we have already run the k-means clustering to chooses the initial $\mu_i$.  
+
+The final value of the means is different depending for the initialization.
+
+Let us observe the final means K=3 in the table below.
+
+```{r means for K=3 }
+mu_rm = mu_list[[3]][dim(mu_list[[3]])[1],] %>% round(2) #means for k=3 random centroids init
+mu_km = mu_list[[4]][dim(mu_list[[4]])[1],] %>% round(2) #means for k=3 k-means init
 ```
 
-```{r loglik plots, fig.height=18, fig.width=12}
 
-#WIP: add interpretations on loglikelihood
+| Initialization | $K$  | $\mu_{1,\text{Alcohol}}$  | $\mu_{1,\text{Fixed Acidity}}$  | $\mu_{2,\text{Alcohol}}$   | $\mu_{2,\text{Fixed Acidity}}$  | $\mu_{3,\text{Alcohol}}$  | $\mu_{3,\text{Fixed Acidity}}$  |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Random centroids | 3 | `r mu_rm[1]`  | `r mu_rm[4]` | `r mu_rm[2]` | `r mu_rm[5]` | `r mu_rm[3]` | `r mu_rm[6]` |
+| K-means | 3 | `r mu_km[1]`  | `r mu_km[4]` | `r mu_km[2]` | `r mu_km[5]` | `r mu_km[3]` | `r mu_km[6]` |
 
+
+
+Now we observe the evolution of the log-likelihood for the two types of initialization. 
+
+```{r loglik plots, fig.height=8, fig.width=9}
+
+loglik_df <- plyr::ldply(loglik_list, rbind)
+loglik_df <- data.frame(t(loglik_df[-1]))
 plots_list = list()
-for (plt_n in c(1:length(loglik_list))){
-  loglik_hist = loglik_list[[plt_n]]
-  p1 = plot_hist_loglik(loglik_hist)
-  plots_list[[plt_n]] = p1
+for (cnt in c(1:4)){
+  llk1<- loglik_df[,(2*cnt-1):(2*cnt)]
+  llk1$index=c(1:nrow(llk1))
+  
+  df10 <- melt(llk1 ,  id.vars = 'index', variable.name = 'mu_clusters')
+  df10 = na.omit(df10)
+  
+  p1 <- ggplot(df10, aes(index, value)) + geom_point(aes(colour = variable), shape=4) + geom_path(aes(colour = variable))+ theme_bw() + ylab("loglik") + xlab("iteration") + scale_color_manual(labels = c("Random centroids", "k-means"), values = c("#F8766D", "#00BFC4")) + labs(subtitle = paste("K = ",as.character(cnt+1)))
+  
+  plots_list[[cnt]] = p1
+  
 }
 
-ggarrange(plotlist = plots_list, nrow = 4, ncol = 2,legend = "none")
+plt_hist_loglik <- ggarrange(plotlist = plots_list, nrow = 2, ncol = 2,common.legend = TRUE) 
 
-# plot_list_loglik = function(loglik_list){
-# 
-# 
-# data_loglik <- matrix(ncol=length(loglik_list), nrow=1000)
-# 
-# plots_list = c()
-# for (plt_n in c(1:length(loglik_list))){
-# 
-# data_loglik[,1] <- loglik_list[[1]]
-# data_loglik[,1] <- loglik_list[[1]]
-# loglik_list[[1]]
-# plots_list = append(plots_list,plot_hist_mu(data_mu, K))
-# 
-# if((plt_n %% 2) == 0) {
-# K<-K+1
-# }
-# 
-# }
-# 
-# ggarrange(plotlist = plots_list, nrow = 4, ncol = 4,legend = "none")
-#   
-#   
-# data_loglik = as.data.frame(loglik_hist)
-# colnames(data_loglik) = c("loglik_hist", "index")
-# 
-# data_loglik$index=c(1:nrow(data_loglik))
-# 
-# p1 <- ggplot(data_loglik, aes(index,loglik_hist)) + geom_point(shape=4) + geom_path()+ theme_bw()
-# 
-# return(p1)
-# 
-# }
+annotate_figure(plt_hist_loglik, top = text_grob("Historical values for the Log-likelihood using the EM algorithm by number of clusters and type of initialization", color = "black", face = "bold", size = 12))
 
 ```
 
-```{r}
 
-# are the means and sigmas the same?
+The random centroid provides a higher log-likelihood in all the cases which confirms the observations we had in the historical $\mu$ and the values of ARI and CE. With this analysis, we can say that the algorithm of EM-GMM with random centroids outperforms the k-means initialization, although it tends to take more iterations to converge.
 
+Moreover we can also compare the values of AIC and BIC for the 2 initializations with $K=3$. And as expected all the values for the random centroids are higher than the k-means, as we can see in the table below.
 
-# is the classification the same?
+| Algorithm | Initialization | K  | AIC  | BIC | 
+| --- | --- | --- | --- | --- |
+| EM | Random centroids | 3 | `r AIC_list[3]` | `r BIC_list[3]` | 
+| EM | K-means | 3 | `r AIC_list[4]` | `r BIC_list[3]` |
 
-
-# is the AIC, BIC and loglik the same?
-
-
-# compare the number of iterations to converge (use length(loglik_hist))
-
-
-# (if the results are the same continue with only one of the two)
-
-```
 
 # EM algorithm vs k-means
 
-```{r}
-# pending!!!!!!!!!!!
+```{r,fig.height=8, fig.width=10}
+
+#evaluating the clustering
+error_rate_vec1 <- c(0,c_error_vec[3:4],round(classError(kmeans_cl$cluster, y)[[2]],4))
+adj_rndI_vec1 <- c(1,adj_rndI_vec[3:4],round(adjustedRandIndex(kmeans_cl$cluster, y),4))
+
+#applying k-means
+kmeans_cl = kmeans(X, centers=3, nstart = 100, iter.max = 25)
+plt4 <- plot_ellipses_CI(X,K,kmeans_cl$cluster) + xlab(colnames(X)[1]) + ylab(colnames(X)[2]) + theme(legend.position = "none")
+
+# plots 
+plots_list=list()
+plots_list[[1]] <- plt1 + labs(subtitle = paste("Initial clustering", "ARI = ", adj_rndI_vec1[1]," CE = ",error_rate_vec1[1]))
+plots_list[[2]] <- plt2 + labs(subtitle = paste("EM random centroids init", "ARI = ", adj_rndI_vec1[2]," CE = ",error_rate_vec1[2]))
+plots_list[[3]] <- plt3 + labs(subtitle = paste("EM K-means init","ARI = ", adj_rndI_vec1[3]," CE = ",error_rate_vec1[3]))
+plots_list[[4]] <- plt4 + labs(subtitle = paste("K-means clustering", "ARI = ", adj_rndI_vec1[4]," CE = ",error_rate_vec1[4]))
+
+# labels_error <- paste("ARI=", as.character(round(adj_rndI_vec1,4)), ", CE=", as.character(round(error_rate_vec1,4)),sep="")
+
+plt_final <- ggarrange(plotlist = plots_list, nrow = 2, ncol = 2, common.legend = TRUE, labels = '', hjust = -0.6, vjust = 3.5, font.label = list(size = 12, color = "orangered", face = "plain", family = NULL)) 
 
 
-# comparison the clusters of each technique using classError and adjustedRandIndex from the Mclust package
-
-# compare the results of both of them according to the ground truth
+annotate_figure(plt_final, top = text_grob("Comparison between EM algorithm with 2 initialization and the K-means clustering \n Metrics to evaluate the clustering ARI = Adjusted Rand Index, CE = Class error", color = "black", face = "bold", size = 12))
 
 
 ```
+
+Considering the ARI and CE we can confirm that the EM algorithm with random centroids have the best performance. We observe also that the clustering given by the k-means is pretty similar to the EM algorith with k-means initialization, the mean values just change a bit with the iterations in the EM. Something to note is that the grouping made by k-means takes horizontal groups in our data, forming the groups along the x-axis (alcohol), which is the variable that has the lowest variance.
 
 # Number of clusters selection
 

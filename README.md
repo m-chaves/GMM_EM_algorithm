@@ -13,21 +13,21 @@ Let us show you a glace of the sections and figures:
 In this section we define the functions that will help us in our analysis.
 
 ## Data loading
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/data_loading.png" width="800"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/cluster%20data-1.png" width="700"><br>
 
 ## The EM algorithm
 ### Clustering comparison results
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/clustering_comparison.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/ellipses%20cluster%202var-1.png" width="1000"><br>
 ### Mean convergence
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/mean_convergence.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/mu%20plots-1.png" width="1000"><br>
 ### Log-likelihood convergence
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/loglik_convergence.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/loglik%20plots-1.png" width="1000"><br>
 
 ## EM algorithm vs k-means
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/EM_vs_Kmeans.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/comparison%20with%20k-means-1.png" width="1000"><br>
 ## Number of clusters selection
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/cluster_selection.png" width="1000"><br>
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/cluster_7.png" width="800"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/number%20of%20cluster%20selection%20for%20bivariate%20case-1.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm_files/figure-html/EM%20for%207%20clusters-1.png" width="800"><br>
 ## Towards higher dimensions
 <img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/towards_HD.png" width="1000"><br>
 ## Conclusion

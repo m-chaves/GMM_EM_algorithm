@@ -713,6 +713,7 @@ The random centroid get a higher log-likelihood in all the cases which confirms 
 Moreover we can also compare the values of AIC and BIC for the 2 initializations with K=3. And as expected all the values for the random centroids are higher than the k-means, as we can see in the table below.
 
 | Algorithm | Initialization | K  | AIC  | BIC | 
+| --- | --- | --- | --- | --- |
 | EM | Random centroids | 3 | -960.7947 | -978.2945 | 
 | EM | K-means | 3 | -972.0563 | -989.5561 |
 
@@ -742,15 +743,15 @@ annotate_figure(plt_final, top = text_grob("Comparison between EM algorithm with
 
 ```
 
-###Observations
+### Observations
 
-Considering the ARI and CE we can confirm that the EM algorithm with random centroids 
+Considering the ARI and CE we can confirm that the EM algorithm with random centroids have the best performance. We observe also that the clustering given by the k-means is pretty similar to the EM algorith with k-means initialization, the mean values just change a bit with the iterations in the EM. Something to note is that the grouping made by k-means takes horizontal groups in our data, forming the groups along the x-axis (alcohol), which is the variable that has the lowest variance.
 
 | Algorithm | Initialization | K  | mu1_x  | mu1_y | mu2_x  | mu2_y | mu3_x |mu3_y | ARI | CE |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
 | EM | Random centroids | 3 | 12.86083  | 101.14858 | 12.19020 | 67.62052 | 13.62334 | 72.89933 | 0.3286 | 0.2978 |
 | EM | K-means | 3 | 13.11542 | 72.31235 | 12.81306 | 96.41468 | 12.86201 | 114.76510 | 0.1476 | 0.4719 |
 | K-means | - | 3 | 12.95889 | 117.85556 | 12.82167 | 95.70000 | 13.11186 | 71.07835 | 0.1493 | 0.4888 |
-
 
 
 # Number of clusters selection

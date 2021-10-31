@@ -13,6 +13,8 @@ editor_options:
   chunk_output_type: inline
 ---
 
+[github repo](https://github.com/m-chaves/GMM_EM_algorithm)
+
 # Introduction
 
 In this work, we implement the EM-algorithm for GMM. It is applied to multivariate data, more specifically the wine dataset available in the pgmm package. This dataset contains chemical characteristics about three types of wine. We use AIC, BIC and the likelihood as metrics to identify an adequate number of clusters. To assess the quality of the clustering, we use the function classError and adjustedRandIndex from the Mclust package. We compare the results of GMM with another clustering algorithm (k-means), and against the ground truth, that is the original wine type. Additionally, we explore two types of initialization for the parameters of the model, we refer to them as random centroids initialization and k-means initialization.    
@@ -651,11 +653,9 @@ data_mu = mu_list[[plt_n]]
 
 # plots_list = plot_hist_mu(data_mu, K)
 
-max_x= max(sapply(mu_list, function(x){dim(x)[1]}))
-
 p1 <- plot_hist_mu(data_mu, K)
-p1_1<- p1[[1]] + ylab(colnames(X)[1]) + xlab('Iteration') + xlim(0, max_x)
-p1_2<- p1[[2]] + ylab(colnames(X)[2]) + xlab('Iteration') + xlim(0, max_x)
+p1_1<- p1[[1]] + ylab(colnames(X)[1]) + xlab('Iteration') 
+p1_2<- p1[[2]] + ylab(colnames(X)[2]) + xlab('Iteration') 
 if (plt_n%%2 == 1 & K==2){
   p1_1<-p1_1 + labs(title = "Init: Random centroids") + labs(subtitle = paste("K =", as.character(K),sep="")) 
   p1_2<-p1_2 + labs(title = "Init: Random centroids") + labs(subtitle = paste("K =", as.character(K),sep="")) 

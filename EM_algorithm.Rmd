@@ -723,13 +723,13 @@ Moreover we can also compare the values of AIC and BIC for the 2 initializations
 
 ```{r,fig.height=8, fig.width=10}
 
-#evaluating the clustering
-error_rate_vec1 <- c(0,c_error_vec[3:4],round(classError(kmeans_cl$cluster, y)[[2]],4))
-adj_rndI_vec1 <- c(1,adj_rndI_vec[3:4],round(adjustedRandIndex(kmeans_cl$cluster, y),4))
-
 #applying k-means
 kmeans_cl = kmeans(X, centers=3, nstart = 100, iter.max = 25)
 plt4 <- plot_ellipses_CI(X,K,kmeans_cl$cluster) + xlab(colnames(X)[1]) + ylab(colnames(X)[2]) + theme(legend.position = "none")
+
+#evaluating the clustering
+error_rate_vec1 <- c(0,c_error_vec[3:4],round(classError(kmeans_cl$cluster, y)[[2]],4))
+adj_rndI_vec1 <- c(1,adj_rndI_vec[3:4],round(adjustedRandIndex(kmeans_cl$cluster, y),4))
 
 # plots 
 plots_list=list()

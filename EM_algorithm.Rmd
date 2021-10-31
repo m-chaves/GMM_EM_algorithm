@@ -513,6 +513,8 @@ plt1 +  ggtitle('Fixed Acidity and Alcohol of the wines grouped by the true clus
 
 # The EM algorithm
 
+## Clustering comparison 
+
 Let us use the EM algorithm in our bivariate dataset using the two types of initialization: random centroids and k-means 
 For each initialization run the EM algorithm with values of $K = 2,3,4,5$ clusters
 To measure how similar is the clustering to the ground truth we use the Adjusted Rand Index (ARI) and the Classification error (CE).
@@ -612,6 +614,8 @@ For larger values of $K$ the clustering with random centroids starts doing errat
 | K-means | 5 | `r adj_rndI_vec[8]` | `r c_error_vec[1]` |
 
 
+## Mean convergence
+
 Let us analyze how $\mu$ evolves from their initialization to their final positions. 
 
 
@@ -676,6 +680,7 @@ mu_km = mu_list[[4]][dim(mu_list[[4]])[1],] %>% round(2) #means for k=3 k-means 
 | K-means | 3 | `r mu_km[1]`  | `r mu_km[4]` | `r mu_km[2]` | `r mu_km[5]` | `r mu_km[3]` | `r mu_km[6]` |
 
 
+# Log-likelihood convergence 
 
 Now we observe the evolution of the log-likelihood for the two types of initialization. 
 

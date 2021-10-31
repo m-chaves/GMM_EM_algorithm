@@ -13,7 +13,7 @@ Let us show you a glace of the sections and figures:
 In this section we define the functions that will help us in our analysis.
 
 ## Data loading
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/data_loading.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/data_loading.png" width="800"><br>
 
 ## The EM algorithm
 ### Clustering comparison results
@@ -27,7 +27,7 @@ In this section we define the functions that will help us in our analysis.
 <img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/EM_vs_Kmeans.png" width="1000"><br>
 ## Number of clusters selection
 <img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/cluster_selection.png" width="1000"><br>
-<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/cluster_7.png" width="1000"><br>
+<img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/cluster_7.png" width="800"><br>
 ## Towards higher dimensions
 <img src="https://github.com/m-chaves/GMM_EM_algorithm/blob/main/images/towards_HD.png" width="1000"><br>
 ## Conclusion

@@ -6,7 +6,7 @@ In this work, we implement from scratch the EM-algorithm for GMM in R. It is app
 
 To see the complete work download the [EM_algorithm.html file](https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm.html), to see the code check the [EM_algorithm.Rmd file](https://github.com/m-chaves/GMM_EM_algorithm/blob/main/EM_algorithm.Rmd).
 
-Let us show you a glace of the sections and figures:  
+Let us show you a glance of the sections and figures:  
 
 ## Useful functions
 
